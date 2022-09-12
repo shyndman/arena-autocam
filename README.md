@@ -1,7 +1,7 @@
 # Arena Autocam
 
 This project aims to drive a Raspberry Pi 4 camera to smoothly follow a horse
-and rider for video capture.
+and rider during video capture.
 
 ## Requirements
 
