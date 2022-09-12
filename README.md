@@ -1,5 +1,9 @@
 # Arena Autocam
 
-Video records horse and rider in the indoor arena, keeping the rider in frame.
+This project aims to drive a Raspberry Pi 4 camera to smoothly follow a horse
+and rider for video capture.
 
-Runs on a Pi 4 with a panning camera.
+## Requirements
+
+* Git LFS
+* Conda (environment described in `environment.yml`)
