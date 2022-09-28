@@ -6,4 +6,4 @@ and rider during video capture.
 ## Requirements
 
 * Git LFS
-* Conda (environment described in `environment.yml`)
+* Conda (environment described in `tflite-environment.yml`, `icevision-environment.yml`)
