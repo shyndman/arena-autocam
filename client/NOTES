@@ -1,4 +1,4 @@
-Stream camera to TCP
+Stream camera h264 to TCP
 raspivid
   --verbose
   --timeout 0 # disable
