@@ -1,0 +1,10 @@
+Stream camera to TCP
+raspivid
+  --verbose
+  --timeout 0 # disable
+  --nopreview
+  --framerate 24
+  --width 1280
+  --height 720
+  --listen # For TCP
+  --output tcp://0.0.0.0:8554
