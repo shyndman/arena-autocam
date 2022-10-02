@@ -1,0 +1,18 @@
+#:kivy 2.1
+
+<CameraFocalPoint>:
+    size: 50, 50
+    canvas:
+        Color:
+            rgba: self.color(self.emphasized)
+        Ellipse:
+            pos: self.pos
+            size: self.size
+
+<SmoothFollow>:
+    camera_focus: camera_focus
+
+    CameraFocalPoint:
+        id: camera_focus
+        emphasized: not root.cursor_over_app
+        center: self.parent.center
