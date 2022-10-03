@@ -1,10 +1,8 @@
 Stream camera h264 to TCP
-raspivid
-  --verbose
-  --timeout 0 # disable
-  --nopreview
-  --framerate 24
-  --width 1280
-  --height 720
-  --listen # For TCP
-  --output tcp://0.0.0.0:8554
+
+file server:
+  preview:
+  mplayer 'ffmpeg://tcp://Ubuntu-Desktop.local:8554?listen'
+
+  save:
+  ffmpeg ??? tcp://Ubuntu-Desktop.local:8554?listen
