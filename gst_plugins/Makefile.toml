@@ -1,0 +1,25 @@
+
+# Can be debugged with gst-debugger:
+# https://gitlab.gnome.org/GNOME/gst-debugger
+
+[tasks.run-aainfersink-pipeline]
+script = '''
+RUST_BACKTRACE=1 GST_PLUGIN_PATH=target/debug/gst_plugin \
+gst-launch-1.0 --gst-debug-level=4 --gst-debug=GST_STATES:3,GST_REFCOUNTING:3 -v \
+    videotestsrc is-live=true pattern=snow ! \
+    video/x-raw,width=320,height=240,format=RGB,framerate=60/1 ! \
+    rawvideoparse format=rgb ! \
+    aainfersink
+'''
+
+[tasks.run-aainferpass-pipeline]
+script = '''
+RUST_BACKTRACE=1 GST_PLUGIN_PATH=target/debug/gst_plugin \
+gst-launch-1.0 --gst-debug-level=4 --gst-debug=GST_STATES:3,GST_REFCOUNTING:3 -v \
+    videotestsrc is-live=true pattern=snow ! \
+    video/x-raw,width=320,height=240,format=RGB,framerate=60/1 ! \
+    rawvideoparse format=rgb ! \
+    aainferpass ! \
+    videoconvert ! \
+    autovideosink
+'''
