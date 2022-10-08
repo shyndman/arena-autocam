@@ -143,7 +143,7 @@ impl VideoFilterImpl for AaInferPass {
             color_hint: None,
         };
 
-        let (channels, width, height) = samples.bounds();
+        let (_channels, width, height) = samples.bounds();
         info!(
             CAT,
             obj: element,
