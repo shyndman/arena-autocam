@@ -1,12 +1,11 @@
 use gst::glib;
 
-mod identity;
+mod aainfer;
 
 // Plugin entry point that should register all elements provided by this plugin,
 // and everything else that this plugin might provide (e.g. typefinders or device providers).
 fn plugin_init(plugin: &gst::Plugin) -> Result<(), glib::BoolError> {
-    identity::register(plugin)?;
-
+    aainfer::register(plugin)?;
     Ok(())
 }
 
