@@ -1,0 +1,14 @@
+{
+  "files.exclude": {
+    "target/": true
+  },
+  "files.watcherExclude": {
+    "**/target": true
+  },
+  "rust-analyzer.files.excludeDirs": [
+    "target"
+  ],
+  "dart.analysisExcludedFolders": [
+    "target"
+  ]
+}
