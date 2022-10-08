@@ -15,7 +15,7 @@ mod imp;
 
 // The public Rust wrapper type for our element
 glib::wrapper! {
-    pub struct AaInfer(ObjectSubclass<imp::AaInfer>) @extends gst_base::BaseTransform, gst::Object;
+    pub struct AaInferSink(ObjectSubclass<imp::AaInferSink>) @extends gst_video::VideoSink, gst_base::BaseSink, gst::Element, gst::Object;
 }
 
 // Registers the type for our element, and then registers in GStreamer under
@@ -24,8 +24,8 @@ glib::wrapper! {
 pub fn register(plugin: &gst::Plugin) -> Result<(), glib::BoolError> {
     gst::Element::register(
         Some(plugin),
-        "aainfer",
+        "aainfersink",
         gst::Rank::None,
-        AaInfer::static_type(),
+        AaInferSink::static_type(),
     )
 }

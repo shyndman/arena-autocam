@@ -1,11 +1,22 @@
 use gst::glib;
+use once_cell::sync::Lazy;
 
-mod aainfer;
+mod aainfersink;
+mod aainferpass;
+
+pub(crate) static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
+    gst::DebugCategory::new(
+        "AA_INFER",
+        gst::DebugColorFlags::empty(),
+        Some("Auto-Arena Inference"),
+    )
+});
 
 // Plugin entry point that should register all elements provided by this plugin,
 // and everything else that this plugin might provide (e.g. typefinders or device providers).
 fn plugin_init(plugin: &gst::Plugin) -> Result<(), glib::BoolError> {
-    aainfer::register(plugin)?;
+    aainfersink::register(plugin)?;
+    aainferpass::register(plugin)?;
     Ok(())
 }
 
