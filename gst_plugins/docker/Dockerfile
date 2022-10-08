@@ -1,9 +1,16 @@
 FROM ghcr.io/cross-rs/aarch64-unknown-linux-gnu:main
 
-COPY docker/install_deb.sh /
+COPY docker/install_tflite_build_deps.sh /
 # Change the packages to your dependencies.
-RUN /install_deb.sh arm64  libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
-      libgstreamer1.0-0 gir1.2-gstreamer-1.0 \
-      gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
-      gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly \
-      gstreamer1.0-libav libgstrtspserver-1.0-dev libges-1.0-dev
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    apt-utils libssl-dev apt-transport-https gnupg
+ENV XDG_CACHE_HOME /home/cross
+RUN /install_tflite_build_deps.sh
+RUN dpkg --add-architecture arm64
+RUN apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y install \
+    libgstreamer1.0-dev:arm64 \
+    gstreamer1.0-plugins-base:arm64 gstreamer1.0-plugins-good:arm64 \
+    gstreamer1.0-plugins-bad:arm64 gstreamer1.0-plugins-ugly:arm64 \
+    gstreamer1.0-libav:arm64 libgstrtspserver-1.0-dev:arm64 libges-1.0-dev:arm64 \
+    libssl-dev:arm64

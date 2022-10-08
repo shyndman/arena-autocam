@@ -1,2 +1,11 @@
 [target.aarch64-unknown-linux-gnu]
 dockerfile = "./docker/Dockerfile"
+runner = "native"
+
+[target.aarch64-unknown-linux-gnu.env]
+passthrough = [
+  "RUST_BACKTRACE",
+  "CROSS_DEBUG",
+  "CROSS_CONTAINER_USER_NAMESPACE=none",
+  "XDG_CACHE_HOME=/home/cross",
+]
