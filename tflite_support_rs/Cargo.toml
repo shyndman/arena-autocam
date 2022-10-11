@@ -1,29 +1,30 @@
 [package]
-name = "tflite_support_rs"
+name = "tflite-support-rs"
 version = "0.0.1"
 authors = ["Scott Hyndman <shyndman@gmail.com>"]
 edition = "2021"
 description = "Rust wrapper of the Tensorflow Lite Support library's Object Detector C API"
-keywords = ["bindings", "tensorflow", "machine-learning", "ffi", "cross-platform"]
+keywords = [
+  "bindings",
+  "tensorflow",
+  "machine-learning",
+  "ffi",
+  "cross-platform",
+]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "tflite_support_rs"
-
-[dependencies]
-
-[build-dependencies]
-bindgen = "0.60.1"
-fs_extra = "1.2.0"
+name = "lib"
+path = "src/lib.rs"
 
 [features]
 xnnpack = []
 xnnpack_qu8 = ["xnnpack"]
 xnnpack_qs8 = ["xnnpack"]
 
-# docs.rs-specific configuration
-[package.metadata.docs.rs]
-# document all features
-all-features = true
-# defines the configuration attribute `docsrs`
-rustdoc-args = ["--cfg", "docsrs"]
+[build-dependencies]
+bindgen = "0.60.1"
+fs_extra = "1.2.0"
+
+[build-dependencies.const_format]
+version = "0.2.30"
+features = ["fmt"]
