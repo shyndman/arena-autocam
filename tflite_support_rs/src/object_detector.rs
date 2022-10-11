@@ -1,15 +1,13 @@
-use crate::{
-    bindings::{
-        TfLiteCategory, TfLiteDetection, TfLiteDetectionResult, TfLiteDetectionResultDelete,
-        TfLiteFrameBuffer, TfLiteObjectDetector, TfLiteObjectDetectorDelete,
-        TfLiteObjectDetectorDetect, TfLiteObjectDetectorFromOptions,
-        TfLiteObjectDetectorOptions, TfLiteObjectDetectorOptionsCreate, TfLiteSupportError,
-        TfLiteSupportErrorCode, TfLiteSupportErrorDelete,
-    },
-    TfLiteFrameBufferDimension, TfLiteFrameBufferFormat, TfLiteFrameBufferOrientation,
+use crate::bindings::{
+    TfLiteCategory, TfLiteDetection, TfLiteDetectionResult, TfLiteDetectionResultDelete,
+    TfLiteFrameBuffer, TfLiteObjectDetector, TfLiteObjectDetectorDelete,
+    TfLiteObjectDetectorDetect, TfLiteObjectDetectorFromOptions, TfLiteObjectDetectorOptions,
+    TfLiteObjectDetectorOptionsCreate, TfLiteSupportError, TfLiteSupportErrorCode,
+    TfLiteSupportErrorDelete,
 };
 use std::{
     ffi::{CStr, CString},
+    fmt::Display,
     ptr::null_mut,
     slice::from_raw_parts,
 };
@@ -20,17 +18,14 @@ pub struct BaseOptions {
 }
 
 pub struct DetectionOptions {
-    // score_threshold: Optional[float] = None,
     pub score_threshold: Option<f32>,
-    // max_results: Optional[int] = None
     pub max_results: Option<i32>,
-    // category_name_allowlist: Optional[List[str]] = None,
-    // category_name_denylist: Optional[List[str]] = None,
-    // display_names_locale: Optional[str] = None,
+    // TODO(shyndman): category_name_allowlist: Optional[List[str]] = None,
+    // TODO(shyndman): category_name_denylist: Optional[List[str]] = None,
+    // TODO(shyndman): display_names_locale: Optional[str] = None,
 }
 
 #[derive(Debug)]
-
 pub struct ObjectDetector {
     native_detector: *mut TfLiteObjectDetector,
 }
@@ -39,7 +34,7 @@ impl ObjectDetector {
     pub fn with_options(
         base_options: BaseOptions,
         detection_options: DetectionOptions,
-    ) -> Result<ObjectDetector> {
+    ) -> Result<ObjectDetector, Error> {
         unsafe {
             let mut native_options: TfLiteObjectDetectorOptions =
                 TfLiteObjectDetectorOptionsCreate();
@@ -69,7 +64,6 @@ impl ObjectDetector {
                     },
                 };
                 TfLiteSupportErrorDelete(err);
-
                 return Err(rust_error);
             }
 
@@ -77,23 +71,34 @@ impl ObjectDetector {
         }
     }
 
-    pub fn detect<'a, IntoFrame>(&self, frame: &IntoFrame) -> Result<DetectionResult>
+    pub fn detect<IntoFrame>(&self, frame: IntoFrame) -> Result<DetectionResult, Error>
     where
-        IntoFrame: Copy + Into<&'a TfLiteFrameBuffer>,
+        IntoFrame: TryInto<TfLiteFrameBuffer>,
     {
+        let frame_buffer: TfLiteFrameBuffer = frame.try_into().map_err(|_e| Error {
+            // TODO return something meaningful
+            code: TfLiteSupportErrorCode::kError,
+            message: "".into(),
+        })?;
+
         unsafe {
             let mut err: *mut TfLiteSupportError = null_mut();
-            let frame_buffer: &TfLiteFrameBuffer = (*frame).into();
             let native_result = TfLiteObjectDetectorDetect(
                 self.native_detector,
-                frame_buffer as *const TfLiteFrameBuffer,
+                &frame_buffer as *const TfLiteFrameBuffer,
                 &mut err,
             );
 
             if !err.is_null() {
-                eprintln!("Error running detect: {:?}", (*err).code);
-
+                let rust_error = Error {
+                    code: (*err).code,
+                    message: {
+                        let err_cstr = CStr::from_ptr((*err).message);
+                        err_cstr.to_str().unwrap().into()
+                    },
+                };
                 TfLiteSupportErrorDelete(err);
+                return Err(rust_error);
             }
 
             return Ok(DetectionResult { native_result });
@@ -114,11 +119,15 @@ pub struct DetectionResult {
 }
 
 impl DetectionResult {
+    pub fn size(&self) -> usize {
+        unsafe { (*self.native_result).size as usize }
+    }
+
     pub fn detections(&self) -> impl Iterator<Item = Detection> {
         let native_detections = unsafe {
             from_raw_parts(
                 (*self.native_result).detections as *const TfLiteDetection,
-                (*self.native_result).size as usize,
+                self.size(),
             )
         };
 
@@ -152,11 +161,15 @@ impl Detection {
         }
     }
 
+    pub fn category_count(&self) -> usize {
+        unsafe { (*self.native_detection).size as usize }
+    }
+
     pub fn categories(&self) -> impl Iterator<Item = DetectionCategory> {
         let native_categories = unsafe {
             from_raw_parts(
                 (*self.native_detection).categories as *const TfLiteCategory,
-                (*self.native_detection).size as usize,
+                self.category_count(),
             )
         };
 
@@ -171,6 +184,17 @@ pub struct DetectionCategory {
     // No need to manually delete this, as it is destroyed along with the
     // TfLiteDetectionResult
     native_category: *const TfLiteCategory,
+}
+
+impl Display for DetectionCategory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "DetectionCategory(score={} label={})",
+            self.score(),
+            self.label()
+        )
+    }
 }
 
 impl DetectionCategory {
@@ -193,45 +217,13 @@ impl DetectionCategory {
     }
 }
 
+#[derive(Debug)]
 pub struct Rect {
     pub x: i32,
     pub y: i32,
     pub width: i32,
     pub height: i32,
 }
-
-pub type FrameBufferFormat = TfLiteFrameBufferFormat;
-pub type FrameBufferOrientation = TfLiteFrameBufferOrientation;
-
-pub struct FrameBuffer {
-    pub format: FrameBufferFormat,
-    pub orientation: FrameBufferOrientation,
-    pub dimension: (i32, i32),
-    pub buffer: Box<[u8]>,
-}
-
-impl FrameBuffer {
-    fn to_tflite_frame(&self) -> TfLiteFrameBuffer {
-        TfLiteFrameBuffer {
-            format: self.format,
-            orientation: self.orientation,
-            dimension: TfLiteFrameBufferDimension {
-                width: self.dimension.0,
-                height: self.dimension.1,
-            },
-            buffer: self.buffer.clone().as_mut_ptr(),
-        }
-    }
-}
-
-impl From<FrameBuffer> for TfLiteFrameBuffer {
-    fn from(value: FrameBuffer) -> Self {
-        value.to_tflite_frame()
-    }
-}
-
-/// A specialized [`Result`] type for API operations.
-pub type Result<T> = std::result::Result<T, Error>;
 
 /// The error type for TensorFlow Lite operations.
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]

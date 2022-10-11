@@ -2,8 +2,8 @@ use gst::glib;
 use once_cell::sync::Lazy;
 
 mod detector_service;
-mod gstreamer;
 mod frame;
+mod gstreamer;
 mod util;
 
 pub(crate) static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {

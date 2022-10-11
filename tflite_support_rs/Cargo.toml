@@ -13,7 +13,7 @@ keywords = [
 ]
 
 [lib]
-name = "lib"
+name = "tflite_support"
 path = "src/lib.rs"
 
 [features]
