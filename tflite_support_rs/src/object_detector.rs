@@ -1,9 +1,12 @@
-use crate::bindings::{
-    TfLiteCategory, TfLiteDetection, TfLiteDetectionResult, TfLiteDetectionResultDelete,
-    TfLiteFrameBuffer, TfLiteObjectDetector, TfLiteObjectDetectorDelete,
-    TfLiteObjectDetectorDetect, TfLiteObjectDetectorFromOptions, TfLiteObjectDetectorOptions,
-    TfLiteObjectDetectorOptionsCreate, TfLiteSupportError, TfLiteSupportErrorCode,
-    TfLiteSupportErrorDelete,
+use crate::{
+    bindings::{
+        TfLiteCategory, TfLiteDetection, TfLiteDetectionResult, TfLiteDetectionResultDelete,
+        TfLiteFrameBuffer, TfLiteObjectDetector, TfLiteObjectDetectorDelete,
+        TfLiteObjectDetectorDetect, TfLiteObjectDetectorFromOptions,
+        TfLiteObjectDetectorOptions, TfLiteObjectDetectorOptionsCreate, TfLiteSupportError,
+        TfLiteSupportErrorCode, TfLiteSupportErrorDelete,
+    },
+    TfLiteFrameBufferDimension, TfLiteFrameBufferFormat, TfLiteFrameBufferOrientation,
 };
 use std::{
     ffi::{CStr, CString},
@@ -74,11 +77,18 @@ impl ObjectDetector {
         }
     }
 
-    pub fn detect(&self, frame: impl Into<*const TfLiteFrameBuffer>) -> Result<DetectionResult> {
+    pub fn detect<'a, IntoFrame>(&self, frame: &IntoFrame) -> Result<DetectionResult>
+    where
+        IntoFrame: Copy + Into<&'a TfLiteFrameBuffer>,
+    {
         unsafe {
             let mut err: *mut TfLiteSupportError = null_mut();
-            let native_result =
-                TfLiteObjectDetectorDetect(self.native_detector, frame.into(), &mut err);
+            let frame_buffer: &TfLiteFrameBuffer = (*frame).into();
+            let native_result = TfLiteObjectDetectorDetect(
+                self.native_detector,
+                frame_buffer as *const TfLiteFrameBuffer,
+                &mut err,
+            );
 
             if !err.is_null() {
                 eprintln!("Error running detect: {:?}", (*err).code);
@@ -98,8 +108,6 @@ impl Drop for ObjectDetector {
         }
     }
 }
-
-pub struct FrameBuffer {}
 
 pub struct DetectionResult {
     native_result: *mut TfLiteDetectionResult,
@@ -192,6 +200,36 @@ pub struct Rect {
     pub height: i32,
 }
 
+pub type FrameBufferFormat = TfLiteFrameBufferFormat;
+pub type FrameBufferOrientation = TfLiteFrameBufferOrientation;
+
+pub struct FrameBuffer {
+    pub format: FrameBufferFormat,
+    pub orientation: FrameBufferOrientation,
+    pub dimension: (i32, i32),
+    pub buffer: Box<[u8]>,
+}
+
+impl FrameBuffer {
+    fn to_tflite_frame(&self) -> TfLiteFrameBuffer {
+        TfLiteFrameBuffer {
+            format: self.format,
+            orientation: self.orientation,
+            dimension: TfLiteFrameBufferDimension {
+                width: self.dimension.0,
+                height: self.dimension.1,
+            },
+            buffer: self.buffer.clone().as_mut_ptr(),
+        }
+    }
+}
+
+impl From<FrameBuffer> for TfLiteFrameBuffer {
+    fn from(value: FrameBuffer) -> Self {
+        value.to_tflite_frame()
+    }
+}
+
 /// A specialized [`Result`] type for API operations.
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -222,10 +260,7 @@ mod tests {
 
         match ObjectDetector::with_options(base_opts, detection_opts) {
             Ok(detector) => println!("Got a detector {:?}", detector),
-            Err(error) => println!(
-                "Error: {:?}",
-                error
-            ),
+            Err(error) => println!("Error: {:?}", error),
         }
     }
 }
