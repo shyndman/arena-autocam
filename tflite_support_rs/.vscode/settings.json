@@ -1,4 +1,16 @@
 {
   "rust-analyzer.cargo.buildScripts.enable": true,
-  "rust-analyzer.procMacro.enable": true
+  "rust-analyzer.procMacro.enable": true,
+  "files.exclude": {
+    "target/": true
+  },
+  "files.watcherExclude": {
+    "**/target": true
+  },
+  "rust-analyzer.files.excludeDirs": [
+    "target"
+  ],
+  "dart.analysisExcludedFolders": [
+    "target"
+  ]
 }

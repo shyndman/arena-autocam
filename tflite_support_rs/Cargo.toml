@@ -1,17 +1,14 @@
 [package]
-name = "tflitec"
-version = "0.5.1"
-authors = ["ebraraktas <ebrar@voys.ai>"]
-edition = "2018"
-license = "MIT"
-description = "A safe Rust wrapper of TensorFlow Lite C API supporting x86_64 and ARM (iOS, Android)"
-repository = "https://github.com/VoysAI/tflitec-rs"
+name = "tflite_support_rs"
+version = "0.0.1"
+authors = ["Scott Hyndman <shyndman@gmail.com>"]
+edition = "2021"
+description = "Rust wrapper of the Tensorflow Lite Support library's Object Detector C API"
 keywords = ["bindings", "tensorflow", "machine-learning", "ffi", "cross-platform"]
-categories = ["api-bindings", "science"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "tflitec"
+name = "tflite_support_rs"
 
 [dependencies]
 
