@@ -1,4 +1,4 @@
-use super::super::CAT;
+use crate::CAT;
 use gst::glib;
 use gst::subclass::prelude::*;
 use gst::{gst_debug as debug, gst_info as info};
@@ -38,15 +38,14 @@ impl ElementImpl for AaInferSink {
     // retrieved from the gst::Registry after initial registration
     // without having to load the plugin in memory.
     fn metadata() -> Option<&'static gst::subclass::ElementMetadata> {
-        static ELEMENT_METADATA: Lazy<gst::subclass::ElementMetadata> =
-            Lazy::new(|| {
-                gst::subclass::ElementMetadata::new(
-                    "AaInferSink",
-                    "Sink",
-                    "Performs Arena-Autocam inference as a sink.",
-                    "Scott Hyndman <shyndman@gmail.com>",
-                )
-            });
+        static ELEMENT_METADATA: Lazy<gst::subclass::ElementMetadata> = Lazy::new(|| {
+            gst::subclass::ElementMetadata::new(
+                "AaInferSink",
+                "Sink",
+                "Performs Arena-Autocam inference as a sink.",
+                "Scott Hyndman <shyndman@gmail.com>",
+            )
+        });
 
         Some(&*ELEMENT_METADATA)
     }
@@ -117,16 +116,11 @@ impl VideoSinkImpl for AaInferSink {
 
         let mut info_guard = self.info.lock().unwrap();
         let info = info_guard.as_mut().ok_or_else(|| {
-            gst::element_error!(
-                element,
-                gst::CoreError::Negotiation,
-                ["Have no info yet"]
-            );
+            gst::element_error!(element, gst::CoreError::Negotiation, ["Have no info yet"]);
             gst::FlowError::NotNegotiated
         })?;
 
-        let frame =
-            VideoFrameRef::from_buffer_ref_readable(buffer.as_ref(), info).unwrap();
+        let frame = VideoFrameRef::from_buffer_ref_readable(buffer.as_ref(), info).unwrap();
         let samples = image::FlatSamples::<Vec<u8>> {
             samples: frame.plane_data(0).unwrap().to_vec(),
             layout: image::flat::SampleLayout {

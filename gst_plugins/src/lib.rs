@@ -1,8 +1,10 @@
 use gst::glib;
 use once_cell::sync::Lazy;
 
-mod aainfersink;
-mod aainferpass;
+mod detector_service;
+mod gstreamer;
+mod frame;
+mod util;
 
 pub(crate) static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
     gst::DebugCategory::new(
@@ -15,8 +17,8 @@ pub(crate) static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
 // Plugin entry point that should register all elements provided by this plugin,
 // and everything else that this plugin might provide (e.g. typefinders or device providers).
 fn plugin_init(plugin: &gst::Plugin) -> Result<(), glib::BoolError> {
-    aainfersink::register(plugin)?;
-    aainferpass::register(plugin)?;
+    gstreamer::aainfersink::register(plugin)?;
+    gstreamer::aainferpass::register(plugin)?;
     Ok(())
 }
 
@@ -26,7 +28,7 @@ fn plugin_init(plugin: &gst::Plugin) -> Result<(), glib::BoolError> {
 // license of the plugin, source package name, binary package name, origin where it comes from
 // and the date/time of release.
 gst::plugin_define!(
-    rstutorial,
+    aagst,
     env!("CARGO_PKG_DESCRIPTION"),
     plugin_init,
     concat!(env!("CARGO_PKG_VERSION"), "-", env!("COMMIT_ID")),

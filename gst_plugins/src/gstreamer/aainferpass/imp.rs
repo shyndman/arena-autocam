@@ -1,17 +1,14 @@
-use super::super::CAT;
-use gst::subclass::prelude::*;
-use gst::{glib, FractionRange};
-use gst::{gst_debug as debug, gst_info as info};
+use crate::detector_service::detect_objects_in_frame;
+use crate::CAT;
+use gst::{glib, gst_info as info, subclass::prelude::*, FractionRange};
 use gst_base::subclass::{prelude::*, BaseTransformMode};
 use gst_video::subclass::prelude::*;
 use gst_video::VideoFrameRef;
 use once_cell::sync::Lazy;
 
-// This module contains the private implementation details of our element
-
 // Struct containing all the element data
 #[derive(Default)]
-pub struct AaInferPass {}
+pub struct AaInferPass;
 
 // This trait registers our type with the GObject object system and
 // provides the entry points for creating a new instance and setting
@@ -24,7 +21,11 @@ impl ObjectSubclass for AaInferPass {
 }
 
 // Implementation of glib::Object virtual methods
-impl ObjectImpl for AaInferPass {}
+impl ObjectImpl for AaInferPass {
+    fn constructed(&self, obj: &Self::Type) {
+        self.parent_constructed(obj);
+    }
+}
 
 impl GstObjectImpl for AaInferPass {}
 
@@ -125,40 +126,31 @@ impl VideoFilterImpl for AaInferPass {
     fn transform_frame_ip(
         &self,
         element: &Self::Type,
-        frame: &mut VideoFrameRef<&mut gst::BufferRef>,
+        frame_ref: &mut VideoFrameRef<&mut gst::BufferRef>,
     ) -> Result<gst::FlowSuccess, gst::FlowError> {
-        debug!(CAT, obj: element, "Received frame len={}", frame.size());
-        let now = std::time::Instant::now();
+        // info!(CAT, obj: element, "Received frame {:#?}", frame_ref);
+        // let now = std::time::Instant::now();
 
-        let samples = image::FlatSamples::<Vec<u8>> {
-            samples: frame.plane_data(0).unwrap().to_vec(),
-            layout: image::flat::SampleLayout {
-                channels: 1,
-                channel_stride: 1,
-                width: frame.width(),
-                width_stride: 1,
-                height: frame.height(),
-                height_stride: frame.plane_stride()[0] as usize,
-            },
-            color_hint: None,
-        };
+        detect_objects_in_frame(frame_ref.info().clone(), frame_ref.buffer().copy());
 
-        let (_channels, width, height) = samples.bounds();
-        info!(
-            CAT,
-            obj: element,
-            "Frame received {} {}⨉{}",
-            frame.buffer().dts_or_pts().unwrap().mseconds(),
-            width,
-            height
-        );
+        // let wrapper = FrameBufferWrapper { frame_ref };
 
-        info!(
-            CAT,
-            obj: element,
-            "Spent {}ms on inference",
-            now.elapsed().as_millis()
-        );
+        // let (_channels, width, height) = samples.bounds();
+        // info!(
+        //     CAT,
+        //     obj: element,
+        //     "Frame received {} {}⨉{}",
+        //     frame.buffer().dts_or_pts().unwrap().mseconds(),
+        //     width,
+        //     height
+        // );
+
+        // info!(
+        //     CAT,
+        //     obj: element,
+        //     "Spent {}ms on inference",
+        //     now.elapsed().as_millis()
+        // );
 
         Ok(gst::FlowSuccess::Ok)
     }
