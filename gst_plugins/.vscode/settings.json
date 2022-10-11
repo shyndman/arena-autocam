@@ -1,7 +1,4 @@
 {
-  "files.exclude": {
-    "target/": true
-  },
   "files.watcherExclude": {
     "**/target": true
   },
