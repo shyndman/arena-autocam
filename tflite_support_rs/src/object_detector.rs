@@ -55,6 +55,9 @@ impl ObjectDetector {
 
             let mut err: *mut TfLiteSupportError = null_mut();
             let native_detector = TfLiteObjectDetectorFromOptions(&native_options, &mut err);
+
+            eprintln!("@@@@@ {:#?}", native_options);
+
             if !err.is_null() {
                 let rust_error = Error {
                     code: (*err).code,
@@ -66,6 +69,8 @@ impl ObjectDetector {
                 TfLiteSupportErrorDelete(err);
                 return Err(rust_error);
             }
+
+
 
             return Ok(ObjectDetector { native_detector });
         }

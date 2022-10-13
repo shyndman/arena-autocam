@@ -7,5 +7,8 @@
   ],
   "dart.analysisExcludedFolders": [
     "target"
-  ]
+  ],
+  "rust-analyzer.server.extraEnv": {
+    "RA_LOG": "warn"
+  }
 }

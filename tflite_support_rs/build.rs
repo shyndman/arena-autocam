@@ -18,8 +18,14 @@ const SHARED_LIB_STEM: &str = "object_detector_c";
 const SHARED_LIB_REL_PATH: &str = "tensorflow_lite_support/c/bindgen";
 const SHARED_LIB_BAZEL_TARGET: &str = formatc!("//{SHARED_LIB_REL_PATH}:object_detector_c");
 
+const CONFIGURE_TARGET: &str = "@org_tensorflow//:configure.py";
+
 fn target_os() -> String {
     env::var("CARGO_CFG_TARGET_OS").expect("Unable to get TARGET_OS")
+}
+
+fn is_debug_build() -> bool {
+    env::var("DEBUG").unwrap_or("0".into()).as_str() != "0"
 }
 
 fn dll_extension() -> &'static str {
@@ -71,6 +77,7 @@ fn main() {
 
     check_and_set_envs();
     prepare_tensorflow_source(tf_src_path.as_path());
+    configure_build(tf_src_path.as_path());
     build_tensorflow_with_bazel(tf_src_path.to_str().unwrap(), config.as_str());
 
     // Generate bindings using headers
@@ -80,6 +87,7 @@ fn main() {
 fn check_and_set_envs() {
     let python_bin_path =
         get_python_bin_path().expect("Cannot find Python binary having required packages.");
+    println!("!!!! {}", python_bin_path.to_str().unwrap());
     let default_envs = [
         ["PYTHON_BIN_PATH", python_bin_path.to_str().unwrap()],
         ["USE_DEFAULT_PYTHON_LIB_PATH", "1"],
@@ -143,9 +151,6 @@ fn prepare_tensorflow_source(tf_src_path: &Path) {
     std::fs::File::create(complete_clone_hint_file).expect("Cannot create clone hint file!");
     println!("Clone took {:?}", Instant::now() - start);
 
-    let root = std::path::PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    let bazel_build_path = root.join("build-res/shared_libs.bzl");
-
     let bindgen_path = tf_src_path.join(SHARED_LIB_REL_PATH);
     let bindgen_build_path = bindgen_path.join("BUILD");
     eprintln!(
@@ -157,8 +162,53 @@ fn prepare_tensorflow_source(tf_src_path: &Path) {
         "Copying custom BUILD file into tflite_support source tree, dest={:?}",
         bindgen_build_path
     );
-    std::fs::copy(bazel_build_path, bindgen_build_path)
-        .expect("Unable to copy custom BUILD file");
+}
+
+fn configure_build(tf_src_path: &Path) {
+    // Grab the configure.py file from the tensorflow repo
+    std::process::Command::new("bazel")
+        .arg("build")
+        .arg(CONFIGURE_TARGET)
+        .current_dir(tf_src_path)
+        .status()
+        .expect("Could not execute bazel");
+
+    // Copy it over to the repo root
+    let query_out = unsafe {
+        String::from_utf8_unchecked(
+            std::process::Command::new("bazel")
+                .arg("query")
+                .arg("--output")
+                .arg("location")
+                .arg(CONFIGURE_TARGET)
+                .current_dir(tf_src_path)
+                .output()
+                .expect("Could not query path of configure.py")
+                .stdout,
+        )
+    };
+    let configure_path = query_out
+        .get(
+            ..query_out
+                .find(":")
+                .expect("bazel query did not return expected location formation"),
+        )
+        .unwrap();
+    copy_or_overwrite(configure_path, tf_src_path.join("configure.py"));
+
+    // Invoke configure.py -- it will run automatically because of the env vars we've set
+    std::fs::create_dir_all(tf_src_path.join("tools"))
+        .expect("Could not create tools directory (required by configure.py)");
+    let python_bin_path = env::var("PYTHON_BIN_PATH").expect("Cannot read PYTHON_BIN_PATH");
+    if !std::process::Command::new(&python_bin_path)
+        .arg("configure.py")
+        .current_dir(tf_src_path)
+        .status()
+        .unwrap_or_else(|_| panic!("Cannot execute python at {}", &python_bin_path))
+        .success()
+    {
+        panic!("Cannot configure tensorflow")
+    }
 }
 
 fn build_tensorflow_with_bazel(tf_src_path: &str, bazel_config_option: &str) {
@@ -173,7 +223,14 @@ fn build_tensorflow_with_bazel(tf_src_path: &str, bazel_config_option: &str) {
     let output_shared_lib_path = libc_out_dir.join(shared_lib_basename.clone());
 
     let mut bazel = std::process::Command::new("bazel");
-    bazel.arg("build").arg("-c").arg("opt");
+    bazel
+        .arg("--bazelrc")
+        .arg(".tf_configure.bazelrc")
+        .arg("build");
+
+    if is_debug_build() {
+        bazel.arg("--config").arg("dbg");
+    }
 
     // Configure XNNPACK flags
     // In r2.6, it is enabled for some OS such as Windows by default.
@@ -192,6 +249,7 @@ fn build_tensorflow_with_bazel(tf_src_path: &str, bazel_config_option: &str) {
         .arg(SHARED_LIB_BAZEL_TARGET)
         .current_dir(tf_src_path);
 
+    bazel.arg("--copt").arg("-frecord-gcc-switches");
     if let Ok(copts) = env::var(BAZEL_COPTS_ENV_VAR) {
         let copts = copts.split_ascii_whitespace();
         for opt in copts {

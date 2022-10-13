@@ -14,10 +14,12 @@ impl TryFrom<FrameBufferWrapper> for TfLiteFrameBuffer {
     type Error = FrameConvertError;
     fn try_from(value: FrameBufferWrapper) -> Result<Self, Self::Error> {
         let FrameBufferWrapper { video_info, buffer } = value;
+        let mapped_buffer = buffer.map_readable().unwrap();
         let slice = &mut vec![0; buffer.size()];
-        buffer.copy_to_slice(0, slice).unwrap();
+        slice.copy_from_slice(mapped_buffer.as_slice());
 
         let src_format = video_info.format();
+
         let dst_format = match src_format {
             VideoFormat::I420 => TfLiteFrameBufferFormat::kYV21,
             VideoFormat::A420 => TfLiteFrameBufferFormat::kYV12,
@@ -31,7 +33,7 @@ impl TryFrom<FrameBufferWrapper> for TfLiteFrameBuffer {
 
         Ok(TfLiteFrameBuffer {
             format: dst_format,
-            orientation: tflite_support::TfLiteFrameBufferOrientation::kBottomLeft,
+            orientation: tflite_support::TfLiteFrameBufferOrientation::kTopLeft,
             dimension: tflite_support::TfLiteFrameBufferDimension {
                 width: video_info.width() as i32,
                 height: video_info.height() as i32,

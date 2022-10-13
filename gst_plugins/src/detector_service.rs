@@ -19,6 +19,9 @@ const MODEL_PATH: &'static str = "test/sample.tflite";
 
 static INFERENCE_CHANNEL: Lazy<RequestSender<InferenceRequest, InferenceResponse>> =
     Lazy::new(|| {
+        let vlog_level = std::env::var("TF_CPP_MAX_VLOG_LEVEL").expect("NOT HERE!!!!");
+        eprintln!("@@@{}@@@", vlog_level);
+
         let (send_req, receive_req) = channel();
         std::thread::spawn(move || run_inference_loop(receive_req));
         send_req
@@ -46,7 +49,7 @@ fn run_inference_loop(receive_req: RequestReceiver<InferenceRequest, InferenceRe
     };
     let detection_opts = DetectionOptions {
         max_results: Some(5),
-        score_threshold: Some(0.7),
+        score_threshold: Some(0.0),
     };
     let detector = match ObjectDetector::with_options(base_opts, detection_opts) {
         Ok(detector) => detector,

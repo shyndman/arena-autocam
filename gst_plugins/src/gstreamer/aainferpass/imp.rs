@@ -1,6 +1,6 @@
 use crate::detector_service::detect_objects_in_frame;
 use crate::CAT;
-use gst::{glib, gst_info as info, subclass::prelude::*, FractionRange};
+use gst::{glib, gst_debug as debug, subclass::prelude::*, FractionRange};
 use gst_base::subclass::{prelude::*, BaseTransformMode};
 use gst_video::subclass::prelude::*;
 use gst_video::VideoFrameRef;
@@ -128,7 +128,12 @@ impl VideoFilterImpl for AaInferPass {
         element: &Self::Type,
         frame_ref: &mut VideoFrameRef<&mut gst::BufferRef>,
     ) -> Result<gst::FlowSuccess, gst::FlowError> {
-        // info!(CAT, obj: element, "Received frame {:#?}", frame_ref);
+        debug!(
+            CAT,
+            obj: element,
+            "Received frame {:#?}",
+            frame_ref.buffer().dts_or_pts()
+        );
         // let now = std::time::Instant::now();
 
         detect_objects_in_frame(frame_ref.info().clone(), frame_ref.buffer().copy());
