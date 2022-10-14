@@ -29,6 +29,7 @@ pub struct DetectionOptions {
 pub struct ObjectDetector {
     native_detector: *mut TfLiteObjectDetector,
 }
+unsafe impl Sync for ObjectDetector {}
 
 impl ObjectDetector {
     pub fn with_options(
