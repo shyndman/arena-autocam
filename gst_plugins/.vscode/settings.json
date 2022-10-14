@@ -1,14 +1,23 @@
 {
+  "rust-analyzer.cargo.buildScripts.enable": false,
+  "rust-analyzer.procMacro.enable": true,
   "files.watcherExclude": {
     "**/target": true
+  },
+  "rust-analyzer.server.extraEnv": {
+    "CARGO": "../tools/cargo-unstable",
   },
   "rust-analyzer.files.excludeDirs": [
     "target"
   ],
+  "rust-analyzer.cargo.buildScripts.overrideCommand": [
+    "cargo",
+    "check",
+    "-v",
+    "--workspace",
+    "--all-targets"
+  ],
   "dart.analysisExcludedFolders": [
     "target"
-  ],
-  "rust-analyzer.server.extraEnv": {
-    "RA_LOG": "warn"
-  }
+  ]
 }

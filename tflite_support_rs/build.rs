@@ -58,6 +58,8 @@ fn out_dir() -> PathBuf {
 }
 
 fn main() {
+    copy_build_bins_to_tools();
+
     println!("cargo:rerun-if-env-changed={}", BAZEL_COPTS_ENV_VAR);
     println!("cargo:rerun-if-env-changed={}", PREBUILT_PATH_ENV_VAR);
     if let Some(target) = normalized_target() {
@@ -82,6 +84,25 @@ fn main() {
 
     // Generate bindings using headers
     generate_bindings(tf_src_path);
+}
+
+fn copy_build_bins_to_tools() {
+    let tools_path = Path::new("tools");
+    std::fs::create_dir_all(tools_path).unwrap();
+
+    for (_var_name, bin_path) in
+        env::vars().filter(|(name, _)| name.starts_with("CARGO_BIN_FILE_"))
+    {
+        let bin_path_buf = PathBuf::from(bin_path);
+        let bin_file_name: String = {
+            let n: &str = bin_path_buf.file_name().unwrap().to_str().unwrap().into();
+            n[..n.rfind("-").unwrap()].into()
+        };
+
+        let src = bin_path_buf;
+        let dest = tools_path.join(bin_file_name);
+        copy_or_overwrite(src, dest);
+    }
 }
 
 fn check_and_set_envs() {

@@ -4,8 +4,18 @@
   "files.watcherExclude": {
     "**/target": true
   },
+  "rust-analyzer.server.extraEnv": {
+    "CARGO": "../tools/cargo-unstable",
+  },
   "rust-analyzer.files.excludeDirs": [
     "target"
+  ],
+  "rust-analyzer.cargo.buildScripts.overrideCommand": [
+    "cargo",
+    "check",
+    "-v",
+    "--workspace",
+    "--all-targets"
   ],
   "dart.analysisExcludedFolders": [
     "target"

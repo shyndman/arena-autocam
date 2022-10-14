@@ -1,0 +1,3 @@
+[profile.dev.build-override]
+debug = 1
+opt-level = 2
