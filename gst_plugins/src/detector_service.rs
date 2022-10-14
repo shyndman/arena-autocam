@@ -19,9 +19,6 @@ const MODEL_PATH: &'static str = "test/sample.tflite";
 
 static INFERENCE_CHANNEL: Lazy<RequestSender<InferenceRequest, InferenceResponse>> =
     Lazy::new(|| {
-        let vlog_level = std::env::var("TF_CPP_MAX_VLOG_LEVEL").expect("NOT HERE!!!!");
-        eprintln!("@@@{}@@@", vlog_level);
-
         let (send_req, receive_req) = channel();
         std::thread::spawn(move || run_inference_loop(receive_req));
         send_req
@@ -80,6 +77,6 @@ fn run_inference_loop(receive_req: RequestReceiver<InferenceRequest, InferenceRe
 
             response_sender.respond(InferenceResponse);
         });
-        sleep(Duration::from_millis(100));
+        // sleep(Duration::from_millis(100));
     }
 }
