@@ -173,15 +173,20 @@ fn prepare_tensorflow_source(tf_src_path: &Path) {
     println!("Clone took {:?}", Instant::now() - start);
 
     let bindgen_path = tf_src_path.join(SHARED_LIB_REL_PATH);
-    let bindgen_build_path = bindgen_path.join("BUILD");
     eprintln!(
         "Creating new build directory in source tree, {:?}",
         bindgen_path
     );
     std::fs::create_dir_all(bindgen_path.clone()).expect("Unable to create build directory");
+
+    let bindgen_build_path = bindgen_path.join("BUILD");
     eprintln!(
         "Copying custom BUILD file into tflite_support source tree, dest={:?}",
         bindgen_build_path
+    );
+    copy_or_overwrite(
+        PathBuf::from("build-res/shared_libs.bzl"),
+        bindgen_build_path,
     );
 }
 
