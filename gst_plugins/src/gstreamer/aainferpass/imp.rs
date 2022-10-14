@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::detector_service::detect_objects_in_frame;
 use crate::CAT;
 use gst::{glib, gst_debug as debug, subclass::prelude::*, FractionRange};
@@ -136,7 +138,14 @@ impl VideoFilterImpl for AaInferPass {
         );
         // let now = std::time::Instant::now();
 
+        let ts = Instant::now();
         detect_objects_in_frame(frame_ref.info().clone(), frame_ref.buffer().copy());
+        debug!(
+            CAT,
+            obj: element,
+            "Inference took {}ms",
+            ts.elapsed().as_millis()
+        );
 
         // let wrapper = FrameBufferWrapper { frame_ref };
 

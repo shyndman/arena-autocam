@@ -46,7 +46,7 @@ setup-gst-env: copy-shared-libraries
   set-env("LD_LIBRARY_PATH", ${AA_LIB_SUPPORT_DIR})
   set-env("RUST_BACKTRACE", "full")
 
-gst_launch_flags = "--gst-debug-level=3 --gst-debug=GST_STATES:3,GST_REFCOUNTING:3,videodecoder:1 -v --eos-on-shutdown"
+gst_launch_flags = "--gst-debug-level=3 --gst-debug=AA_INFER:5,GST_STATES:3,GST_REFCOUNTING:3,videodecoder:1 -v --eos-on-shutdown"
 gst_launch_cmd = "gst-launch-1.0 ${gst_launch_flags}"
 
 video_src = "filesrc location='../learn/sample-inference-data/inference-source-1.mp4'"

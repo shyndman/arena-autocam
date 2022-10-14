@@ -108,7 +108,6 @@ fn copy_build_bins_to_tools() {
 fn check_and_set_envs() {
     let python_bin_path =
         get_python_bin_path().expect("Cannot find Python binary having required packages.");
-    println!("!!!! {}", python_bin_path.to_str().unwrap());
     let default_envs = [
         ["PYTHON_BIN_PATH", python_bin_path.to_str().unwrap()],
         ["USE_DEFAULT_PYTHON_LIB_PATH", "1"],
