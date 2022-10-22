@@ -21,7 +21,11 @@ const SHARED_LIB_BAZEL_TARGET: &str = formatc!("//{SHARED_LIB_REL_PATH}:object_d
 const CONFIGURE_TARGET: &str = "@org_tensorflow//:configure.py";
 
 fn target_os() -> String {
-    env::var("CARGO_CFG_TARGET_OS").expect("Unable to get TARGET_OS")
+    env::var("CARGO_CFG_TARGET_OS").expect("Unable to get CARGO_CFG_TARGET_OS")
+}
+
+fn target_arch() -> String {
+    env::var("CARGO_CFG_TARGET_ARCH").expect("Unable to get CARGO_CFG_TARGET_ARCH")
 }
 
 fn is_debug_build() -> bool {
@@ -235,6 +239,14 @@ fn build_tensorflow_with_bazel(tf_src_path: &str, bazel_config_option: &str) {
     if is_debug_build() {
         bazel.arg("--config").arg("dbg");
     }
+
+    let arch = target_arch();
+    match arch.as_str() {
+        "aarch64" => {
+            bazel.arg("--config").arg("elinux_aarch64");
+        },
+        _ => {}
+    };
 
     // Configure XNNPACK flags
     // In r2.6, it is enabled for some OS such as Windows by default.
