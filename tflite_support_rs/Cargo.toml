@@ -13,6 +13,7 @@ path = "src/lib.rs"
 xnnpack = []
 xnnpack_qu8 = ["xnnpack"]
 xnnpack_qs8 = ["xnnpack"]
+coral_tpu = []
 
 [build-dependencies]
 bindgen = "0.60.1"

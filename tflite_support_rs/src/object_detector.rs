@@ -12,9 +12,12 @@ use std::{
     slice::from_raw_parts,
 };
 
+#[derive(Default)]
 pub struct BaseOptions {
     pub model_path: String,
     pub num_threads: i32,
+    #[cfg(feature = "coral_tpu")]
+    pub enable_coral: bool,
 }
 
 pub struct DetectionOptions {
@@ -39,11 +42,13 @@ impl ObjectDetector {
         unsafe {
             let mut native_options: TfLiteObjectDetectorOptions =
                 TfLiteObjectDetectorOptionsCreate();
-            native_options
-                .base_options
-                .compute_settings
-                .cpu_settings
-                .num_threads = base_options.num_threads;
+            let mut compute_settings = native_options.base_options.compute_settings;
+            compute_settings.cpu_settings.num_threads = base_options.num_threads;
+            #[cfg(feature = "coral_tpu")]
+            {
+                compute_settings.coral_delegate_settings.enable_delegate =
+                    base_options.enable_coral;
+            }
 
             let file_path = CString::new(base_options.model_path).unwrap();
             native_options.base_options.model_file.file_path = file_path.as_ptr();
@@ -57,8 +62,6 @@ impl ObjectDetector {
             let mut err: *mut TfLiteSupportError = null_mut();
             let native_detector = TfLiteObjectDetectorFromOptions(&native_options, &mut err);
 
-            eprintln!("@@@@@ {:#?}", native_options);
-
             if !err.is_null() {
                 let rust_error = Error {
                     code: (*err).code,
@@ -70,8 +73,6 @@ impl ObjectDetector {
                 TfLiteSupportErrorDelete(err);
                 return Err(rust_error);
             }
-
-
 
             return Ok(ObjectDetector { native_detector });
         }
@@ -250,6 +251,7 @@ mod tests {
         let base_opts = BaseOptions {
             model_path: MODEL_PATH.into(),
             num_threads: 3,
+            ..BaseOptions::default()
         };
         let detection_opts = DetectionOptions {
             max_results: Some(5),

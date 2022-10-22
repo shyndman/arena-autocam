@@ -9,8 +9,8 @@ use std::time::Instant;
 
 use const_format::formatc;
 
-const TAG: &str = "v0.4.2";
-const TF_GIT_URL: &str = "https://github.com/tensorflow/tflite-support.git";
+const TFLITE_SUPPORT_GIT_URL: &str = "https://github.com/shyndman/tflite-support.git";
+const TFLITE_SUPPORT_GIT_TAG: &str = "v0.4.3+scott";
 const BAZEL_COPTS_ENV_VAR: &str = "TFLITEC_BAZEL_COPTS";
 const PREBUILT_PATH_ENV_VAR: &str = "TFLITEC_PREBUILT_PATH";
 
@@ -62,6 +62,10 @@ fn out_dir() -> PathBuf {
 }
 
 fn main() {
+    eprintln!("Building TfLite Support");
+    eprintln!("is_debug: {}", is_debug_build());
+    eprintln!("target_arch: {}", target_arch());
+
     println!("cargo:rerun-if-env-changed={}", BAZEL_COPTS_ENV_VAR);
     println!("cargo:rerun-if-env-changed={}", PREBUILT_PATH_ENV_VAR);
     if let Some(target) = normalized_target() {
@@ -77,7 +81,7 @@ fn main() {
 
     // Build from source
     let config = target_os();
-    let tf_src_path = out_path.join(format!("tflite_support_{}", TAG));
+    let tf_src_path = out_path.join(format!("tflite_support_{}", TFLITE_SUPPORT_GIT_TAG));
 
     check_and_set_envs();
     prepare_tensorflow_source(tf_src_path.as_path());
@@ -142,9 +146,9 @@ fn prepare_tensorflow_source(tf_src_path: &Path) {
     git.arg("clone")
         .args(&["--depth", "1"])
         .arg("--shallow-submodules")
-        .args(&["--branch", TAG])
+        .args(&["--branch", TFLITE_SUPPORT_GIT_TAG])
         .arg("--single-branch")
-        .arg(TF_GIT_URL)
+        .arg(TFLITE_SUPPORT_GIT_URL)
         .arg(tf_src_path.to_str().unwrap());
     println!("Git clone started");
     let start = Instant::now();
@@ -234,23 +238,27 @@ fn build_tensorflow_with_bazel(tf_src_path: &str, bazel_config_option: &str) {
     bazel
         .arg("--bazelrc")
         .arg(".tf_configure.bazelrc")
-        .arg("build");
+        .arg("build")
+        // We always want verbose failures
+        .arg("--verbose_failures");
 
     if is_debug_build() {
-        bazel.arg("--config").arg("dbg");
+        bazel
+            .arg("--config")
+            .arg("dbg")
+            .arg("--config")
+            .arg("verbose_logs");
     }
 
     let arch = target_arch();
     match arch.as_str() {
         "aarch64" => {
             bazel.arg("--config").arg("elinux_aarch64");
-        },
+        }
         _ => {}
     };
 
     // Configure XNNPACK flags
-    // In r2.6, it is enabled for some OS such as Windows by default.
-    // To enable it by feature flag, we disable it by default on all platforms.
     #[cfg(not(feature = "xnnpack"))]
     bazel.arg("--define").arg("tflite_with_xnnpack=false");
     #[cfg(any(feature = "xnnpack_qu8", feature = "xnnpack_qs8"))]
@@ -259,6 +267,16 @@ fn build_tensorflow_with_bazel(tf_src_path: &str, bazel_config_option: &str) {
     bazel.arg("--define").arg("xnn_enable_qs8=true");
     #[cfg(feature = "xnnpack_qu8")]
     bazel.arg("--define").arg("xnn_enable_qu8=true");
+
+    // Configure Coral TPU flags
+    #[cfg(feature = "coral_tpu")]
+    bazel
+        .arg("--define")
+        .arg("darwinn_portable=1")
+        .arg("--linkopt")
+        .arg("-lusb-1.0")
+        .arg("--linkopt")
+        .arg("-L/usr/lib/aarch64-linux-gnu/");
 
     bazel
         .arg(format!("--config={}", bazel_config_option))
@@ -301,6 +319,8 @@ fn generate_bindings(tf_src_path: PathBuf) {
         .rustified_enum("TfLiteFrameBufferFormat")
         .rustified_enum("TfLiteFrameBufferOrientation")
         .rustified_enum("TfLiteSupportErrorCode")
+        .rustified_enum("CoreMLDelegateSettingsEnabledDevices")
+        .rustified_enum("TfLiteCoralSettingsPerformance")
         // The layout tests are ugly
         .layout_tests(generate_bindgen_layout_tests())
         // Tell cargo to invalidate the built crate whenever any of the included header
