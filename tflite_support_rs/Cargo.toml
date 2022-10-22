@@ -1,5 +1,3 @@
-cargo-features = ["test-dummy-unstable"]
-
 [package]
 name = "tflite-support-rs"
 version = "0.0.1"
@@ -25,9 +23,7 @@ xnnpack_qs8 = ["xnnpack"]
 
 [build-dependencies]
 bindgen = "0.60.1"
-cross = { package = "cross", version = "0.2.4", artifact = "bin:cross" }
 fs_extra = "1.2.0"
-haku = { version = "0.3.5", artifact = "bin:haku" }
 
 [build-dependencies.const_format]
 version = "0.2.30"
