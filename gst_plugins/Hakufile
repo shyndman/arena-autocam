@@ -2,6 +2,26 @@ package_home = `readlink --canonicalize .`
 cargo_target_dir = join($package_home, "target")
 profile = $PROFILE ? 'dev'
 
+set-env("RUST_BACKTRACE", "full")
+
+build-aarch64:
+  cp --preserve=mode,ownership,timestamps \
+      ../tflite_support_rs/docker/docker_setup.aarch64.sh \
+      docker/tflite_docker_setup.aarch64.sh
+
+  release_flag = ""
+  is_release_profile = $profile == 'release'
+  if $is_release_profile:
+    release_flag = "--release"
+  end
+
+  set-env("CROSS_DEBUG", "1")
+  # Run cross, but don't stop the script on failure. We want to clean the
+  # docker setup script.
+  -cross -vvvv build --target aarch64-unknown-linux-gnu ${release_flag}
+
+  rm docker/tflite_docker_setup.aarch64.sh
+
 setup-pipeline-env:
   if !$cargo_target_dir:
     error "CARGO env not set"

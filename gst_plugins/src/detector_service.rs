@@ -42,6 +42,7 @@ fn run_inference_loop(receive_req: RequestReceiver<InferenceRequest, InferenceRe
     let base_opts = BaseOptions {
         model_path: MODEL_PATH.into(),
         num_threads: 4,
+        ..BaseOptions::default()
     };
     let detection_opts = DetectionOptions {
         max_results: Some(5),
