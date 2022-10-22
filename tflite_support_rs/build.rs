@@ -247,7 +247,8 @@ fn build_tensorflow_with_bazel(tf_src_path: &str, bazel_config_option: &str) {
             .arg("--config")
             .arg("dbg")
             .arg("--config")
-            .arg("verbose_logs");
+            .arg("verbose_logs")
+            .arg("--subcommands");
     }
 
     let arch = target_arch();
