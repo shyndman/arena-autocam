@@ -14,7 +14,7 @@ groupadd --gid $USER_GID $USERNAME \
 mkdir -p $XDG_CACHE_HOME
 
 # Install Bazel via Bazelisk
-apt-get install wget
+apt-get install --assume-yes wget
 wget https://github.com/bazelbuild/bazelisk/releases/download/v1.14.0/bazelisk-linux-amd64
 chmod +x bazelisk-linux-amd64
 mv ./bazelisk-linux-amd64 /usr/bin/bazel
@@ -23,4 +23,6 @@ mv ./bazelisk-linux-amd64 /usr/bin/bazel
 apt-get install --assume-yes python3-venv python3-pip
 pip install numpy
 
+# Ensure the cache directory is writable, as Bazelisk will create Bazel
+# instances there.
 chmod -R 777 $XDG_CACHE_HOME
