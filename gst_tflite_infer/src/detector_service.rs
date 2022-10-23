@@ -14,7 +14,7 @@ pub struct InferenceRequest {
 }
 pub struct InferenceResponse;
 
-const MODEL_PATH: &'static str = "test/sample.tflite";
+const MODEL_PATH: &'static str = "sample_data/detection-model.tflite";
 
 static INFERENCE_CHANNEL: Lazy<RequestSender<InferenceRequest, InferenceResponse>> =
     Lazy::new(|| {

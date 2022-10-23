@@ -75,7 +75,7 @@ setup-gst-env: copy-shared-libraries
 gst_launch_flags = "--gst-debug-level=3 --gst-debug=AA_INFER:5,GST_STATES:3,GST_REFCOUNTING:3,videodecoder:1 -v --eos-on-shutdown"
 gst_launch_cmd = "gst-launch-1.0 ${gst_launch_flags}"
 
-video_src = "filesrc location='../learn/sample-inference-data/inference-source-1.mp4'"
+video_src = "filesrc location='sample_data/inference-source-1.mp4'"
 # video_src = "videotestsrc is-live=true pattern=ball"
 infer_caps = "video/x-raw,width=320,height=240,format=RGB"
 
