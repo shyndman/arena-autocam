@@ -23,5 +23,11 @@
   ],
   "dart.analysisExcludedFolders": [
     "target"
-  ]
+  ],
+  "yaml.schemas": {
+    "https://raw.githubusercontent.com/AkihiroSuda/compose-go/8cf4f0bff89ac1e37dbe5a3bca2373ba4051871e/schema/compose-spec.json": [
+      "docker-compose.*.yaml",
+      "docker-compose.yaml"
+    ],
+  },
 }
