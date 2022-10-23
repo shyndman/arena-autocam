@@ -1,15 +1,16 @@
+use std::{
+    ffi::{CStr, CString},
+    fmt::Display,
+    ptr::null_mut,
+    slice::from_raw_parts,
+};
+
 use crate::bindings::{
     TfLiteCategory, TfLiteDetection, TfLiteDetectionResult, TfLiteDetectionResultDelete,
     TfLiteFrameBuffer, TfLiteObjectDetector, TfLiteObjectDetectorDelete,
     TfLiteObjectDetectorDetect, TfLiteObjectDetectorFromOptions, TfLiteObjectDetectorOptions,
     TfLiteObjectDetectorOptionsCreate, TfLiteSupportError, TfLiteSupportErrorCode,
     TfLiteSupportErrorDelete,
-};
-use std::{
-    ffi::{CStr, CString},
-    fmt::Display,
-    ptr::null_mut,
-    slice::from_raw_parts,
 };
 
 #[derive(Default)]

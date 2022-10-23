@@ -1,12 +1,13 @@
 use std::time::Instant;
 
-use crate::detector_service::detect_objects_in_frame;
-use crate::CAT;
 use gst::{glib, gst_debug as debug, subclass::prelude::*, FractionRange};
 use gst_base::subclass::{prelude::*, BaseTransformMode};
 use gst_video::subclass::prelude::*;
 use gst_video::VideoFrameRef;
 use once_cell::sync::Lazy;
+
+use crate::detector_service::detect_objects_in_frame;
+use crate::CAT;
 
 // Struct containing all the element data
 #[derive(Default)]

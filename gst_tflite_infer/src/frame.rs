@@ -1,6 +1,7 @@
+use std::fmt::Display;
+
 use gst::Buffer;
 use gst_video::{VideoFormat, VideoInfo};
-use std::fmt::Display;
 use tflite_support::{TfLiteFrameBuffer, TfLiteFrameBufferFormat};
 
 #[derive(Clone)]

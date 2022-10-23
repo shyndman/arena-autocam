@@ -1,12 +1,14 @@
+use std::time::Instant;
+
+use gst::Buffer;
+use gst_video::VideoInfo;
+use once_cell::sync::Lazy;
+use tflite_support::{BaseOptions, DetectionOptions, ObjectDetector};
+
 use crate::{
     frame::FrameBufferWrapper,
     util::crossbeam_request::{channel, RequestReceiver, RequestSender},
 };
-use gst::Buffer;
-use gst_video::VideoInfo;
-use once_cell::sync::Lazy;
-use std::time::Instant;
-use tflite_support::{BaseOptions, DetectionOptions, ObjectDetector};
 
 pub struct InferenceRequest {
     vid_info: VideoInfo,

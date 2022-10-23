@@ -4,9 +4,7 @@ extern crate bindgen;
 
 use std::env;
 use std::fmt::Debug;
-use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 use std::time::Instant;
 
 use const_format::formatc;

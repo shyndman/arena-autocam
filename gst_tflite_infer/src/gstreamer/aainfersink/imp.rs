@@ -1,4 +1,6 @@
-use crate::CAT;
+use std::sync::Mutex;
+use std::time::Duration;
+
 use gst::glib;
 use gst::subclass::prelude::*;
 use gst::{gst_debug as debug, gst_info as info};
@@ -7,8 +9,8 @@ use gst_video::subclass::prelude::*;
 use gst_video::VideoFrameRef;
 use gst_video::VideoInfo;
 use once_cell::sync::Lazy;
-use std::sync::Mutex;
-use std::time::Duration;
+
+use crate::CAT;
 
 // Struct containing all the element data
 #[derive(Default)]
