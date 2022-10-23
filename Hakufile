@@ -1,0 +1,101 @@
+package_home = `readlink --canonicalize .`
+cargo_target_dir = join($package_home, "target")
+profile = $PROFILE ? 'dev'
+
+gst_plugins_so_filename = 'libgst_tflite_plugins.so'
+
+set-env("RUST_BACKTRACE", "full")
+
+## Builds the images used by Cross to perform cross compilation
+build-docker-build-images:
+  # docker build \
+  #     --tag arena-autocam/aarch64-base:latest \
+  #     --build-arg 'CROSS_DEB_ARCH=arm64' \
+  #     --build-arg 'CROSS_BASE_IMAGE=ghcr.io/cross-rs/aarch64-unknown-linux-gnu:0.2.4' \
+  #     --file build/Dockerfile.aarch64-unknown-linux-gnu.base \
+  #     ${package_home}
+  docker build \
+      --tag arena-autocam/aarch64-build:latest \
+      --build-arg 'CROSS_DEB_ARCH=arm64' \
+      --file build/Dockerfile.aarch64-unknown-linux-gnu.build \
+      ${package_home}
+
+## Builds all ARM64 artifacts
+build-aarch64:
+  set-env("CROSS_DEBUG", "1")
+  # Run cross, but don't stop the script on failure. We want to clean the
+  # docker setup script.
+  -cross -vvvv build --package=gst-tflite-infer --target aarch64-unknown-linux-gnu --profile ${profile}
+
+## Sets environment variables needed by the example pipelines
+_setup-pipeline-env:
+  if !$cargo_target_dir:
+    error "CARGO env not set"
+  end
+
+  is_debug_profile = $profile == 'dev' || $profile == 'test'
+  if $is_debug_profile:
+    profile_target_subdir = 'debug'
+  elseif $profile == 'release':
+    profile_target_subdir = 'release'
+  else:
+    error "Profile not recognized ${PROFILE}"
+  end
+
+  set-env("CARGO_TARGET_PROFILE_DIR", join($cargo_target_dir, $profile_target_subdir))
+  set-env("AA_LIB_SUPPORT_DIR", join($CARGO_TARGET_PROFILE_DIR, "lib/support"))
+  set-env("AA_LIB_GST_DIR", join($CARGO_TARGET_PROFILE_DIR, "lib/gst"))
+  set-env("AA_PATHS_SET", 1)
+
+copy-shared-libraries: setup-pipeline-env
+  profile_target_path=$CARGO_TARGET_PROFILE_DIR
+  if !$AA_PATHS_SET
+    echo "Paths not not set. Please run :setup-pipeline-env"
+    exit 1
+  end
+
+  mkdir -p $AA_LIB_SUPPORT_DIR $AA_LIB_GST_DIR
+
+  # Copy GST plugins
+  cp -f ${profile_target_path}/${gst_plugins_so_filename} ${AA_LIB_GST_DIR}/${gst_plugins_so_filename}
+
+  # Copy TFLite support lib
+  libobject_detector_path=`find ${profile_target_path}/build/tflite-support-* \
+      -name 'libobject_detector_c.so' -printf "%T+ %p\n" | \
+      sort -r | \
+      head -n1 | \
+      awk '{print $2}'`
+  cp -f ${libobject_detector_path} ${AA_LIB_SUPPORT_DIR}/libobject_detector_c.so
+
+setup-gst-env: copy-shared-libraries
+  set-env("GST_PLUGIN_PATH", ${AA_LIB_GST_DIR})
+  set-env("LD_LIBRARY_PATH", ${AA_LIB_SUPPORT_DIR})
+  set-env("RUST_BACKTRACE", "full")
+
+gst_launch_flags = "--gst-debug-level=3 --gst-debug=AA_INFER:5,GST_STATES:3,GST_REFCOUNTING:3,videodecoder:1 -v --eos-on-shutdown"
+gst_launch_cmd = "gst-launch-1.0 ${gst_launch_flags}"
+
+video_src = "filesrc location='../learn/sample-inference-data/inference-source-1.mp4'"
+# video_src = "videotestsrc is-live=true pattern=ball"
+infer_caps = "video/x-raw,width=320,height=240,format=RGB"
+
+run-aainfersink-pipeline: setup-gst-env
+  ${gst_launch_cmd} \
+      ${video_src} ! \
+      ${infer_caps} ! \
+      rawvideoparse format=rgb ! \
+      aainfersink
+
+run-aainferpass-pipeline: setup-gst-env
+  ${gst_launch_cmd} \
+      ${video_src} ! \
+      decodebin ! \
+      videoconvert ! \
+      videoscale ! \
+      ${infer_caps} ! \
+      aainferpass ! \
+      timeoverlay time-mode=4 font-desc="Sans, 42" halignment=center valignment=top ! \
+      videoconvert ! \
+      fpsdisplaysink
+clean:
+  cargo clean

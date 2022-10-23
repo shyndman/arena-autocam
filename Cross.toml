@@ -1,0 +1,11 @@
+# Build this target via the Haku build-aarch64 task
+[target.aarch64-unknown-linux-gnu]
+image = "arena-autocam/aarch64-build:latest"
+runner = "native"
+
+[target.aarch64-unknown-linux-gnu.env]
+passthrough = [
+  "RUST_BACKTRACE",
+  "CROSS_DEBUG",
+  "XDG_CACHE_HOME=/home/cross",
+]

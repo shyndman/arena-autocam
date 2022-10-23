@@ -1,0 +1,24 @@
+[package]
+name = "tflite-support"
+version = "0.0.1"
+authors = ["Scott Hyndman <shyndman@gmail.com>"]
+edition = "2021"
+description = "Rust wrapper of the Tensorflow Lite Support library's Object Detector C API"
+
+[lib]
+name = "tflite_support"
+path = "src/lib.rs"
+
+[features]
+xnnpack = []
+xnnpack_qu8 = ["xnnpack"]
+xnnpack_qs8 = ["xnnpack"]
+coral_tpu = []
+
+[build-dependencies]
+bindgen = "0.60.1"
+fs_extra = "1.2.0"
+
+[build-dependencies.const_format]
+version = "0.2.30"
+features = ["fmt"]

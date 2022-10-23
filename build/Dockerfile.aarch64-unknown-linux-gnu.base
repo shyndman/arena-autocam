@@ -1,0 +1,19 @@
+# This is built as
+
+FROM ghcr.io/cross-rs/aarch64-unknown-linux-gnu:main
+
+ARG CROSS_DEB_ARCH
+
+# Change the packages to your dependencies.
+RUN dpkg --add-architecture $CROSS_DEB_ARCH
+RUN apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get --assume-yes install \
+    libgstreamer1.0-dev:$CROSS_DEB_ARCH \
+    gstreamer1.0-plugins-base:$CROSS_DEB_ARCH \
+    gstreamer1.0-plugins-good:$CROSS_DEB_ARCH \
+    gstreamer1.0-plugins-bad:$CROSS_DEB_ARCH \
+    gstreamer1.0-plugins-ugly:$CROSS_DEB_ARCH \
+    gstreamer1.0-libav:$CROSS_DEB_ARCH \
+    libgstrtspserver-1.0-dev:$CROSS_DEB_ARCH \
+    libges-1.0-dev:$CROSS_DEB_ARCH \
+    libssl-dev:$CROSS_DEB_ARCH

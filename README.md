@@ -6,4 +6,5 @@ and rider during video capture.
 ## Requirements
 
 * Git LFS
-* Conda (environment described in `tflite-environment.yml`, `icevision-environment.yml`)
+* Rust nightly toolchain
+* Haku, used for task running (`cargo install haku`)

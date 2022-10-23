@@ -1,0 +1,2 @@
+[workspace]
+members = ["gst_tflite_infer", "tflite_support"]

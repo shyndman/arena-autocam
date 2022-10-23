@@ -9,8 +9,6 @@ __pycache__/
 # Exported dataset
 dataset
 
-
-# Added by cargo
-
+# Added by Cargo
 /target
 /Cargo.lock
