@@ -12,3 +12,6 @@ dataset
 # Added by Cargo
 /target
 /Cargo.lock
+
+# .env files contain secrets sometimes
+.env
