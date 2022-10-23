@@ -1,13 +1,11 @@
 #![feature(const_mut_refs)]
 
 extern crate bindgen;
-
+use const_format::formatc;
 use std::env;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
-
-use const_format::formatc;
 
 const TFLITE_SUPPORT_GIT_URL: &str = "https://github.com/shyndman/tflite-support.git";
 const TFLITE_SUPPORT_GIT_TAG: &str = "v0.4.3+scott";
