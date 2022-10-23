@@ -1,0 +1,25 @@
+# Do not call `docker compose` on this file directly, as it needs work done
+# beforehand to build the software correctly.
+#
+# The `Hakufile` in the workspace root has everything you're looking for.
+services:
+  aa_app:
+    image: ${REGISTRY_ADDRESS}/arena-autocam/aa-app:latest
+    platform: "linux/amd64"
+    build:
+      context: ".."
+      dockerfile: aa_app/Dockerfile
+      args:
+        - PLATFORM_BASE_IMAGE=ubuntu:jammy
+        - LIBSSL_PKG_NAME=libssl3
+        - BUILD_TARGET_PROFILE_PATH=target/x86_64-unknown-linux-gnu/${BUILD_PROFILE_SUBDIR}
+
+  # TODO: This is only appropriate in staging environments. Remove before we
+  # go live.
+  watchtower:
+    image: containrrr/watchtower
+    platform: "linux/amd64"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/${USER}/.docker/config.json:/config.json
+    command: --interval 30

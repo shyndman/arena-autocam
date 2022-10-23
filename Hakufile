@@ -1,9 +1,22 @@
+X86_64_TARGET_TRIPLE = 'x86_64-unknown-linux-gnu'
+AARCH64_TARGET_TRIPLE = 'aarch64-unknown-linux-gnu'
+
 package_home = `readlink --canonicalize .`
 cargo_target_dir = join($package_home, "target")
-profile = $PROFILE ? 'dev'
 gst_plugins_so_filename = 'libgst_tflite_plugins.so'
-aarch64_target = 'aarch64-unknown-linux-gnu'
 
+target = $TARGET ? $X86_64_TARGET_TRIPLE
+profile = $PROFILE ? 'dev'
+is_debug_profile = $profile == 'dev' || $profile == 'test'
+if $is_debug_profile:
+  build_profile_subdir = 'debug'
+elseif $profile == 'release':
+  build_profile_subdir = 'release'
+else:
+  error "Profile not recognized ${PROFILE}"
+end
+
+# Ensure that we keep those logs fat
 set-env("RUST_BACKTRACE", "full")
 if ! ${CARGO_LOG}:
   set-env("CARGO_LOG", "cargo::core::compiler::fingerprint=info")
@@ -14,18 +27,36 @@ build-cross-compiling-docker-images:
   docker build \
       --tag arena-autocam/build-aarch64:latest \
       --build-arg 'CROSS_DEB_ARCH=arm64' \
-      --build-arg 'CROSS_BASE_IMAGE=ghcr.io/cross-rs/${aarch64_target}:0.2.4' \
-      --file docker/Dockerfile.build.${aarch64_target} \
+      --build-arg 'CROSS_BASE_IMAGE=ghcr.io/cross-rs/${AARCH64_TARGET_TRIPLE}:0.2.4' \
+      --file docker/Dockerfile.build.${AARCH64_TARGET_TRIPLE} \
       ${package_home}
 
-## Builds all ARM64 artifacts
-build-aarch64:
-  # set-env("CROSS_DEBUG", "1")
-  # Run cross, but don't stop the script on failure. We want to clean the
-  # docker setup script.
-  -cross -vvv build \
-      --workspace --target ${aarch64_target} \
+## Builds the app using the provided `PROFILE` and `TARGET` environment
+## variables
+build:
+  if ${target} == ${AARCH64_TARGET_TRIPLE}:
+    # Use cross to build the ARM target in a Docker container.
+    build_cmd = "cross"
+    compose_file_args = "--file docker/docker-compose.yaml --file docker/docker-compose.aarch64.yaml"
+  else
+    # If we're X86_64, use regular old Cargo
+    build_cmd = "cargo"
+    compose_file_args = "--file docker/docker-compose.yaml"
+  end
+
+  # Now we should have all the build arifacts sitting in target/{target}/{profile}
+  ${build_cmd} -vvv build \
+      --workspace --target ${target} \
       --profile ${profile}
+
+  # Create a new set of images from the compose file(s)
+  BUILD_PROFILE_SUBDIR=${build_profile_subdir} docker compose \
+      ${compose_file_args} build
+
+  # Push the images to our private repo (its address is stored in the
+  # .env file)
+  BUILD_PROFILE_SUBDIR=${build_profile_subdir} docker compose \
+      ${compose_file_args} push
 
 ## Sets environment variables needed by the example pipelines
 _setup-pipeline-env:
@@ -33,16 +64,7 @@ _setup-pipeline-env:
     error "CARGO env not set"
   end
 
-  is_debug_profile = $profile == 'dev' || $profile == 'test'
-  if $is_debug_profile:
-    profile_target_subdir = 'debug'
-  elseif $profile == 'release':
-    profile_target_subdir = 'release'
-  else:
-    error "Profile not recognized ${PROFILE}"
-  end
-
-  set-env("CARGO_TARGET_PROFILE_DIR", join($cargo_target_dir, $profile_target_subdir))
+  set-env("CARGO_TARGET_PROFILE_DIR", join($cargo_target_dir, $build_profile_subdir))
   set-env("AA_LIB_SUPPORT_DIR", join($CARGO_TARGET_PROFILE_DIR, "lib/support"))
   set-env("AA_LIB_GST_DIR", join($CARGO_TARGET_PROFILE_DIR, "lib/gst"))
   set-env("AA_PATHS_SET", 1)

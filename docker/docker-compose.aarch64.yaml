@@ -1,0 +1,36 @@
+# This file overrides the values found in docker-compose.yaml.
+#
+# NOTE:
+# Do not call `docker compose` on this file directly, as it needs work done
+# beforehand to build the software correctly.
+#
+# The `Hakufile` in the workspace root has everything you're looking for.
+services:
+  aa_app:
+    image: ${REGISTRY_ADDRESS}/arena-autocam/aa-app:latest
+    platform: "linux/arm64"
+    build:
+      args:
+        - PLATFORM_BASE_IMAGE=balenalib/raspberrypi4-64-debian:bullseye-run
+        - LIBSSL_PKG_NAME=libssl1.1
+        - BUILD_TARGET_PROFILE_PATH=target/aarch64-unknown-linux-gnu/${BUILD_PROFILE_SUBDIR}
+
+  # TODO: Re-enable when we've got the Coral in hand.
+  #  deploy:
+  #    resources:
+  #      reservations:
+  #        devices:
+  #          - capabilities: ["tpu"]
+
+  # Watches the container repository for new versions of our images, updating
+  # them as necessary.
+  #
+  # TODO: This is only appropriate in staging environments. Remove before we
+  # go live.
+  watchtower:
+    image: containrrr/watchtower
+    platform: "linux/arm64"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/pi/.docker/config.json:/config.json
+    command: --interval 30
