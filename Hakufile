@@ -1,31 +1,31 @@
 package_home = `readlink --canonicalize .`
 cargo_target_dir = join($package_home, "target")
 profile = $PROFILE ? 'dev'
-
 gst_plugins_so_filename = 'libgst_tflite_plugins.so'
+aarch64_target = 'aarch64-unknown-linux-gnu'
 
 set-env("RUST_BACKTRACE", "full")
+if ! ${CARGO_LOG}:
+  set-env("CARGO_LOG", "cargo::core::compiler::fingerprint=info")
+end
 
 ## Builds the images used by Cross to perform cross compilation
-build-docker-build-images:
-  # docker build \
-  #     --tag arena-autocam/aarch64-base:latest \
-  #     --build-arg 'CROSS_DEB_ARCH=arm64' \
-  #     --build-arg 'CROSS_BASE_IMAGE=ghcr.io/cross-rs/aarch64-unknown-linux-gnu:0.2.4' \
-  #     --file build/Dockerfile.aarch64-unknown-linux-gnu.base \
-  #     ${package_home}
+build-cross-compiling-docker-images:
   docker build \
-      --tag arena-autocam/aarch64-build:latest \
+      --tag arena-autocam/build-aarch64:latest \
       --build-arg 'CROSS_DEB_ARCH=arm64' \
-      --file build/Dockerfile.aarch64-unknown-linux-gnu.build \
+      --build-arg 'CROSS_BASE_IMAGE=ghcr.io/cross-rs/${aarch64_target}:0.2.4' \
+      --file docker/Dockerfile.build.${aarch64_target} \
       ${package_home}
 
 ## Builds all ARM64 artifacts
 build-aarch64:
-  set-env("CROSS_DEBUG", "1")
+  # set-env("CROSS_DEBUG", "1")
   # Run cross, but don't stop the script on failure. We want to clean the
   # docker setup script.
-  -cross -vvvv build --package=gst-tflite-infer --target aarch64-unknown-linux-gnu --profile ${profile}
+  -cross -vvv build \
+      --workspace --target ${aarch64_target} \
+      --profile ${profile}
 
 ## Sets environment variables needed by the example pipelines
 _setup-pipeline-env:

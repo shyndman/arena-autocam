@@ -4,7 +4,9 @@ extern crate bindgen;
 
 use std::env;
 use std::fmt::Debug;
+use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::time::Instant;
 
 use const_format::formatc;
@@ -19,6 +21,8 @@ const SHARED_LIB_REL_PATH: &str = "tensorflow_lite_support/c/bindgen";
 const SHARED_LIB_BAZEL_TARGET: &str = formatc!("//{SHARED_LIB_REL_PATH}:object_detector_c");
 
 const CONFIGURE_TARGET: &str = "@org_tensorflow//:configure.py";
+
+const GENERATED_BAZELRC_NAME: &str = ".tf_configure.bazelrc";
 
 fn target_os() -> String {
     env::var("CARGO_CFG_TARGET_OS").expect("Unable to get CARGO_CFG_TARGET_OS")
@@ -185,6 +189,13 @@ fn prepare_tensorflow_source(tf_src_path: &Path) {
 }
 
 fn configure_build(tf_src_path: &Path) {
+    let mut configured_bazelrc_path = PathBuf::from(tf_src_path);
+    configured_bazelrc_path.push(GENERATED_BAZELRC_NAME);
+    if configured_bazelrc_path.is_file() {
+        eprintln!("Build already configured. bazelrc found.");
+        return;
+    }
+
     // Grab the configure.py file from the tensorflow repo
     std::process::Command::new("bazel")
         .arg("build")
