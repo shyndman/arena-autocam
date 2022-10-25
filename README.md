@@ -7,4 +7,6 @@ and rider during video capture.
 
 * Git LFS
 * Rust nightly toolchain
-* Haku, used for task running (`cargo install haku`)
+* Haku, used for task running (my fork: `cargo install --force --git
+  https://github.com/shyndman/haku`)
+* dotenv-cli (`npm install --global dotenv-cli`)

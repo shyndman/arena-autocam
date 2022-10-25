@@ -4,15 +4,28 @@
 # The `Hakufile` in the workspace root has everything you're looking for.
 services:
   aa_app:
-    image: ${REGISTRY_ADDRESS}/arena-autocam/aa-app:latest
-    platform: "linux/amd64"
+    image: ${REGISTRY_ADDRESS}/arena-autocam/aa-app_${RUST_TARGET}_${RUST_OUT_PATH}:latest
+    # Privileged is required so that we can access host devices
+    privileged: true
+    volumes:
+      - /dev:/dev
     build:
       context: ".."
       dockerfile: aa_app/Dockerfile
+      # These args must be defined in each of the arch specific docker-compose
+      # files
       args:
-        - PLATFORM_BASE_IMAGE=ubuntu:jammy
-        - LIBSSL_PKG_NAME=libssl3
-        - BUILD_TARGET_PROFILE_PATH=target/x86_64-unknown-linux-gnu/${BUILD_PROFILE_SUBDIR}
+        - BUILD_TARGET_PROFILE_PATH=target/${RUST_TARGET}/${RUST_OUT_PATH}
+
+      # These are defined in the arch-specific docker-compose files
+      #   - PLATFORM_BASE_IMAGE=ubuntu:jammy
+      #   - LIBSSL_PKG_NAME=libssl3
+
+      # The build platform is defined in the arch specific
+      # docker-compose.{arch}.yaml files
+      # x-bake:
+      #   platforms:
+      #     - linux/amd64
 
   # TODO: This is only appropriate in staging environments. Remove before we
   # go live.

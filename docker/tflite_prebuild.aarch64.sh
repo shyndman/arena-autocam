@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
+# Increase buffer size so that Git doesn't barf when pulling the tflite-support
+# repo.
+git config --system http.postBuffer 524288000
+git config --system https.postBuffer 524288000
+
 # Install libusb for Coral Edge TPU support
 # This assumes that dpkg has been configured with an arm64 arch
 apt-get install --assume-yes libusb-1.0-0-dev:$CROSS_DEB_ARCH

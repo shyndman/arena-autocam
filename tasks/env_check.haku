@@ -1,0 +1,27 @@
+X86_64_TARGET_TRIPLE = 'x86_64-unknown-linux-gnu'
+AARCH64_TARGET_TRIPLE = 'aarch64-unknown-linux-gnu'
+
+target = trim($TARGET)
+assert $target, "TARGET environment variable not set or empty (${X86_64_TARGET_TRIPLE}, ${AARCH64_TARGET_TRIPLE})"
+if !match($target, "^${X86_64_TARGET_TRIPLE}$", "^${AARCH64_TARGET_TRIPLE}$"):
+  # Attempt to perform a partial match
+  if starts-with($X86_64_TARGET_TRIPLE, $target):
+    new_target = $X86_64_TARGET_TRIPLE
+  elseif starts-with($AARCH64_TARGET_TRIPLE, $target):
+    new_target = $AARCH64_TARGET_TRIPLE
+  else:
+    error "Invalid TARGET '${target}'"
+  end
+
+  println("Expanded '${target}' from prefix match")
+  target = $new_target
+end
+println("Using TARGET=${target}")
+set-env("TARGET", $target)
+
+profile = trim($PROFILE)
+if !match($profile, "^dev$", "^release$"):
+  error "Invalid PROFILE '${profile}' (dev, release)"
+end
+println("Using PROFILE=${profile}")
+set-env("PROFILE", $profile)

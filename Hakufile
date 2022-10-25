@@ -1,20 +1,18 @@
-X86_64_TARGET_TRIPLE = 'x86_64-unknown-linux-gnu'
-AARCH64_TARGET_TRIPLE = 'aarch64-unknown-linux-gnu'
+import "tasks/env_check.haku"
 
-package_home = `readlink --canonicalize .`
-cargo_target_dir = join($package_home, "target")
-gst_plugins_so_filename = 'libgst_tflite_plugins.so'
-
-target = $TARGET ? $X86_64_TARGET_TRIPLE
-profile = $PROFILE ? 'dev'
-is_debug_profile = $profile == 'dev' || $profile == 'test'
+is_debug_profile = $profile == 'dev'
 if $is_debug_profile:
   build_profile_subdir = 'debug'
 elseif $profile == 'release':
   build_profile_subdir = 'release'
-else:
-  error "Profile not recognized ${PROFILE}"
 end
+
+assert $build_profile_subdir, "Profile not recognized ${PROFILE}"
+set-env("BUILD_PROFILE_SUBDIR", $build_profile_subdir)
+
+package_home = `readlink --canonicalize .`
+cargo_target_dir = join($package_home, "target")
+gst_plugins_so_filename = 'libgst_tflite_plugins.so'
 
 # Ensure that we keep those logs fat
 set-env("RUST_BACKTRACE", "full")
@@ -22,26 +20,42 @@ if ! ${CARGO_LOG}:
   set-env("CARGO_LOG", "cargo::core::compiler::fingerprint=info")
 end
 
-## Builds the images used by Cross to perform cross compilation
-build-cross-compiling-docker-images:
-  docker build \
-      --tag arena-autocam/build-aarch64:latest \
-      --build-arg 'CROSS_DEB_ARCH=arm64' \
-      --build-arg 'CROSS_BASE_IMAGE=ghcr.io/cross-rs/${AARCH64_TARGET_TRIPLE}:0.2.4' \
-      --file docker/Dockerfile.build.${AARCH64_TARGET_TRIPLE} \
-      ${package_home}
+# Computed by _setup_target_docker_compose_string
+target_docker_compose_string = "NOT SET"
 
-## Builds the app using the provided `PROFILE` and `TARGET` environment
-## variables
-build:
+# Computes the contents of the build target's docker-compose.yaml, escapes its
+# newlines, and assigns it to the `target_docker_compose_string` global variable
+_setup_target_docker_compose_string:
+  compose_file_args = "--file docker/docker-compose.yaml"
   if ${target} == ${AARCH64_TARGET_TRIPLE}:
     # Use cross to build the ARM target in a Docker container.
     build_cmd = "cross"
-    compose_file_args = "--file docker/docker-compose.yaml --file docker/docker-compose.aarch64.yaml"
+    compose_file_args = "${compose_file_args} --file docker/docker-compose.aarch64.yaml"
   else
     # If we're X86_64, use regular old Cargo
     build_cmd = "cargo"
-    compose_file_args = "--file docker/docker-compose.yaml"
+    compose_file_args = "${compose_file_args} --file docker/docker-compose.amd64.yaml"
+  end
+
+  convert_result = `FROM_HAKU=1 docker compose ${compose_file_args} convert`
+  if ! ${convert_result}:
+    error 'Failed to merge docker-compose files'
+  end
+  convert_result = replace(${convert_result}, "\n", '\\n')
+  # Set the global variable
+  target_docker_compose_string = ${convert_result}
+
+## Builds the app using the provided `PROFILE` and `TARGET` environment variables
+build: setup_target_docker_compose_string
+  compose_file_args = "--file docker/docker-compose.yaml"
+  if ${target} == ${AARCH64_TARGET_TRIPLE}:
+    # Use cross to build the ARM target in a Docker container.
+    build_cmd = "cross"
+    compose_file_args = "${compose_file_args} --file docker/docker-compose.aarch64.yaml"
+  else
+    # If we're X86_64, use regular old Cargo
+    build_cmd = "cargo"
+    compose_file_args = "${compose_file_args} --file docker/docker-compose.amd64.yaml"
   end
 
   # Now we should have all the build arifacts sitting in target/{target}/{profile}
@@ -49,14 +63,31 @@ build:
       --workspace --target ${target} \
       --profile ${profile}
 
-  # Create a new set of images from the compose file(s)
-  BUILD_PROFILE_SUBDIR=${build_profile_subdir} docker compose \
-      ${compose_file_args} build
+  # DOCKER
+  # Create a new set of images from the merged docker-compose
+  bake_command = "echo '${target_docker_compose_string}' | \
+      docker buildx bake --progress=plain --load --file -"
+  ${bake_command}
 
   # Push the images to our private repo (its address is stored in the
   # .env file)
-  BUILD_PROFILE_SUBDIR=${build_profile_subdir} docker compose \
-      ${compose_file_args} push
+  push_command = "echo '${target_docker_compose_string}' | \
+      docker compose --file - push"
+  ${push_command}
+
+run: build
+    docker_context_arg = ""
+    compose_file_args = "--file docker-compose.yaml"
+    if ${target} == ${AARCH64_TARGET_TRIPLE}:
+      docker_context_arg = "--context=pi-horsie"
+      compose_file_args = "${compose_file_args} --file docker-compose.aarch64.yaml"
+    else
+      compose_file_args = "${compose_file_args} --file docker-compose.amd64.yaml"
+    end
+
+    cd docker
+    docker ${docker_context_arg} compose ${compose_file_args} up
+    cd -
 
 ## Sets environment variables needed by the example pipelines
 _setup-pipeline-env:
@@ -69,7 +100,16 @@ _setup-pipeline-env:
   set-env("AA_LIB_GST_DIR", join($CARGO_TARGET_PROFILE_DIR, "lib/gst"))
   set-env("AA_PATHS_SET", 1)
 
-copy-shared-libraries: setup-pipeline-env
+## Builds the images used by Cross to perform cross compilation
+_build-cross-compiling-docker-images:
+  docker build \
+      --tag arena-autocam/build-aarch64:latest \
+      --build-arg 'CROSS_DEB_ARCH=arm64' \
+      --build-arg 'CROSS_BASE_IMAGE=ghcr.io/cross-rs/${AARCH64_TARGET_TRIPLE}:0.2.4' \
+      --file docker/Dockerfile.build.${AARCH64_TARGET_TRIPLE} \
+      ${package_home}
+
+_copy-shared-libraries: setup-pipeline-env
   profile_target_path=$CARGO_TARGET_PROFILE_DIR
   if !$AA_PATHS_SET
     echo "Paths not not set. Please run :setup-pipeline-env"
@@ -89,10 +129,9 @@ copy-shared-libraries: setup-pipeline-env
       awk '{print $2}'`
   cp -f ${libobject_detector_path} ${AA_LIB_SUPPORT_DIR}/libobject_detector_c.so
 
-setup-gst-env: copy-shared-libraries
+_setup-gst-env: copy-shared-libraries
   set-env("GST_PLUGIN_PATH", ${AA_LIB_GST_DIR})
   set-env("LD_LIBRARY_PATH", ${AA_LIB_SUPPORT_DIR})
-  set-env("RUST_BACKTRACE", "full")
 
 gst_launch_flags = "--gst-debug-level=3 --gst-debug=AA_INFER:5,GST_STATES:3,GST_REFCOUNTING:3,videodecoder:1 -v --eos-on-shutdown"
 gst_launch_cmd = "gst-launch-1.0 ${gst_launch_flags}"

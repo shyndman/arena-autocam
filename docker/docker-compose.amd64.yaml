@@ -10,12 +10,11 @@ services:
     platform: "linux/arm64"
     build:
       args:
-        - PLATFORM_BASE_IMAGE=balenalib/raspberrypi4-64-debian:bullseye-run
-        - LIBSSL_PKG_NAME=libssl1.1
-
+        - PLATFORM_BASE_IMAGE=balenalib/amd64-ubuntu:jammy-run
+        - LIBSSL_PKG_NAME=libssl3
       x-bake:
         platforms:
-          - linux/arm64
+          - linux/amd64
 
   # TODO: Re-enable when we've got the Coral in hand.
   #  deploy:
