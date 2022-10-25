@@ -1,11 +1,12 @@
 #![feature(const_mut_refs)]
 
 extern crate bindgen;
-use const_format::formatc;
 use std::env;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
+
+use const_format::formatc;
 
 const TFLITE_SUPPORT_GIT_URL: &str = "https://github.com/shyndman/tflite-support.git";
 const TFLITE_SUPPORT_GIT_TAG: &str = "v0.4.3+scott";
@@ -29,7 +30,10 @@ fn target_arch() -> String {
 }
 
 fn is_debug_build() -> bool {
-    env::var("DEBUG").unwrap_or("0".into()).as_str() != "0"
+    match env::var("DEBUG").unwrap_or("0".into()).as_str() {
+        "0" | "false" => false,
+        _ => true,
+    }
 }
 
 fn verbose_bazel_logging() -> bool {
@@ -258,7 +262,11 @@ fn build_tensorflow_with_bazel(tf_src_path: &str, bazel_config_option: &str) {
         .arg("--verbose_failures");
 
     if is_debug_build() {
-        bazel.arg("--config").arg("dbg");
+        bazel
+            .arg("--config")
+            .arg("dbg")
+            .arg("--copt")
+            .arg("-frecord-gcc-switches");
     }
 
     if verbose_bazel_logging() {
@@ -301,7 +309,6 @@ fn build_tensorflow_with_bazel(tf_src_path: &str, bazel_config_option: &str) {
         .arg(SHARED_LIB_BAZEL_TARGET)
         .current_dir(tf_src_path);
 
-    bazel.arg("--copt").arg("-frecord-gcc-switches");
     if let Ok(copts) = env::var(BAZEL_COPTS_ENV_VAR) {
         let copts = copts.split_ascii_whitespace();
         for opt in copts {
