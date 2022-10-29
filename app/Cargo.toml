@@ -1,0 +1,42 @@
+[package]
+name = "aa-app"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "aa-app"
+path = "src/bin/arena_autocam.rs"
+
+[lib]
+name = "arena_autocam"
+path = "src/lib.rs"
+
+[dependencies]
+# Project dependencies
+tflite-support = { path = "../tflite_support" }
+
+# 3rd party dependencies
+anyhow = "1.0.66"
+byte-slice-cast = "1.2.2"
+cairo-rs = "0.16.1"
+derive_more = "0.99.17"
+glib = "0.16.2"
+gst = { package = "gstreamer", version = "0.19" }
+gst-app = { package = "gstreamer-app", version = "0.19" }
+gst-audio = { package = "gstreamer-audio", version = "0.19" }
+gst-base = { package = "gstreamer-base", version = "0.19" }
+gst-video = { package = "gstreamer-video", version = "0.19" }
+lazy_static = "1.4.0"
+once_cell = "1.15.0"
+rand = "0.8.5"
+regex = "1.6.0"
+strum = "0.24.1"
+strum_macros = "0.24.3"
+termion = "2.0.1"
+
+[features]
+default = ["synthesize-libcamera-streams"]
+# Necessary for systems where camera device only produces a single stream
+synthesize-libcamera-streams = []
+use-v4l2-h264-encoding = []

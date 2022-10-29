@@ -2,3 +2,4 @@ edition = "2021"
 max_width = 94
 tab_spaces = 4
 group_imports = "StdExternalCrate"
+binop_separator = "Back"

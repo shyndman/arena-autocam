@@ -1,0 +1,12 @@
+# Runs with a tracer
+GST_TRACERS="pipeline-snapshot(dot-ts=true)" GST_DEBUG_DUMP_DOT_DIR=. \
+GST_PLUGIN_PATH=/usr/local/lib/x86_64-linux-gnu/gstreamer-1.0:/home/shyndman/dev/gst-plugins-rs/target/debug/ \
+cargo run --bin=arena_autocam
+
+# Reasonable x264 encoder
+gst::ElementFactory::make("x264enc")
+            .name("display.persist.encoder")
+            .property_from_str("pass", "5")
+            .property_from_str("quantizer", "25")
+            .property_from_str("speed-preset", "6")
+            .build()?

@@ -158,5 +158,25 @@ run-aainferpass-pipeline: setup-gst-env
       timeoverlay time-mode=4 font-desc="Sans, 42" halignment=center valignment=top ! \
       videoconvert ! \
       fpsdisplaysink
+
+
+run-app-test:
+  cd app
+  dot_dir = `pwd`
+  dot_dir = "${dot_dir}/tmp"
+  rm -rf ${dot_dir} && mkdir ${dot_dir}
+
+  # set-env('LIBCAMERA_LOG_LEVELS', '*:DEBUG')
+  set-env('GST_PLUGIN_PATH', '/usr/local/lib/x86_64-linux-gnu/gstreamer-1.0:/usr/lib/x86_64-linux-gnu/gstreamer-1.0/:/home/shyndman/dev/gst-plugins-rs/target/debug/')
+  # set-env('GST_DEBUG', 'GST_CAPS:5,GST_REGISTRY:3,default:3,structure:3,GST_REFCOUNTING:3,GST_PLUGIN_LOADING:3,GST_BUS:3,5')
+  if !$GST_DEBUG:
+    set-env('GST_DEBUG', 'AA_*:5,6')
+  end
+  set-env('GST_DEBUG_DUMP_DOT_DIR', $dot_dir)
+
+  cargo run --bin=aa-app --profile=dev
+
+  #2>&1 | sed --regexp-extended 's/\\([ =(),])/\1/g' | awk '{$1=$2=$3=""; print $0}'
+
 clean:
   cargo clean
