@@ -4,18 +4,18 @@
 # The `Hakufile` in the workspace root has everything you're looking for.
 services:
   aa_app:
-    image: ${REGISTRY_ADDRESS}/arena-autocam/aa-app_${RUST_TARGET}_${RUST_OUT_PATH}:latest
+    image: ${REGISTRY_ADDRESS}/arena-autocam/aa-app_${AA_BUILD_TARGET}_${AA_BUILD_PROFILE}:latest
     # Privileged is required so that we can access host devices
     privileged: true
     volumes:
       - /dev:/dev
     build:
       context: ".."
-      dockerfile: aa_app/Dockerfile
+      dockerfile: aa_app/docker/Dockerfile
       # These args must be defined in each of the arch specific docker-compose
       # files
       args:
-        - BUILD_TARGET_PROFILE_PATH=target/${RUST_TARGET}/${RUST_OUT_PATH}
+        - BUILD_TARGET_PROFILE_PATH=${AA_BUILD_OUT}
 
       # These are defined in the arch-specific docker-compose files
       #   - PLATFORM_BASE_IMAGE=ubuntu:jammy
@@ -31,8 +31,6 @@ services:
   # go live.
   watchtower:
     image: containrrr/watchtower
-    platform: "linux/amd64"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /home/${USER}/.docker/config.json:/config.json
     command: --interval 30

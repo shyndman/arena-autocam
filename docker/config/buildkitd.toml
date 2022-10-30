@@ -1,0 +1,7 @@
+debug = true
+insecure-entitlements = [ "network.host", "security.insecure" ]
+
+# Custom registry.
+[registry."ubuntu-desktop.local:5000"]
+http = true
+insecure = true

@@ -1,18 +1,55 @@
-# This is built as
-
-FROM ghcr.io/cross-rs/aarch64-unknown-linux-gnu:main
-
-ARG CROSS_DEB_ARCH
+# syntax=docker/dockerfile:1
+ARG CROSS_BASE_IMAGE
+FROM ${CROSS_BASE_IMAGE}
 
 # Change the packages to your dependencies.
-COPY docker/tflite_prebuild.aarch64.sh /
-ENV XDG_CACHE_HOME /home/cross
-RUN apt-get install --assume-yes --no-install-recommends \
-    apt-utils libssl-dev apt-transport-https gnupg \
-    vim # For xxd
-RUN dpkg --add-architecture $CROSS_DEB_ARCH
-RUN apt-get update
-RUN DEBIAN_FRONTEND=noninteractive apt-get --assume-yes install \
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Create cache and ensure it's writable
+ENV XDG_CACHE_HOME=/home/shyndman/.cache
+RUN mkdir -p $XDG_CACHE_HOME; \
+    chmod -R 777 $XDG_CACHE_HOME
+
+RUN rm -f /etc/apt/apt.conf.d/docker-clean; echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
+RUN --mount=type=cache,target=/var/cache/apt,sharing=shared \
+    --mount=type=cache,target=/var/lib/apt,sharing=shared \
+    apt-get update && \
+    apt-get install --assume-yes --no-install-recommends \
+    apt-utils libssl-dev apt-transport-https gnupg wget git \
+    # Install TFLite Python deps
+    python3-venv python3-pip \
+    # For xxd
+    vim
+
+# Increase buffer size so that Git doesn't barf when pulling the tflite-support
+# repo.
+RUN git config --system http.postBuffer 524288000; \
+    git config --system https.postBuffer 524288000
+
+# Setup user
+RUN USERNAME=shyndman; \
+    USER_UID=1000; \
+    USER_GID=$USER_UID; \
+    groupadd --force --gid $USER_GID $USERNAME || : ; \
+    useradd --uid $USER_UID --gid $USER_GID -m $USERNAME || : ; \
+    usermod --append --groups root $USERNAME || : ;
+
+# Install Bazel via Bazelisk
+RUN wget https://github.com/bazelbuild/bazelisk/releases/download/v1.14.0/bazelisk-linux-amd64; \
+    chmod +x bazelisk-linux-amd64; \
+    mv ./bazelisk-linux-amd64 /usr/bin/bazel;
+
+# Start pulling from Debian
+RUN mv /etc/apt/sources.list /etc/apt/sources.list.bak; \
+    debsource="deb http://http.debian.net/debian/ bullseye main"; \
+    echo "${debsource}" > /etc/apt/sources.list; \
+    cat /etc/apt/sources.list; \
+    dpkg --add-architecture $CROSS_DEB_ARCH
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=shared \
+    --mount=type=cache,target=/var/lib/apt,sharing=shared \
+    apt-get update && \
+    apt-get --assume-yes install \
     libgstreamer1.0-dev:$CROSS_DEB_ARCH \
     gstreamer1.0-plugins-base:$CROSS_DEB_ARCH \
     gstreamer1.0-plugins-good:$CROSS_DEB_ARCH \
@@ -21,5 +58,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get --assume-yes install \
     gstreamer1.0-libav:$CROSS_DEB_ARCH \
     libgstrtspserver-1.0-dev:$CROSS_DEB_ARCH \
     libges-1.0-dev:$CROSS_DEB_ARCH \
-    libssl-dev:$CROSS_DEB_ARCH
-RUN DEBIAN_FRONTEND=noninteractive /tflite_prebuild.aarch64.sh
+    libssl-dev:$CROSS_DEB_ARCH \
+    # Install libusb for Coral Edge TPU support
+    # This assumes that dpkg has been configured with an arm64 arch
+    libusb-1.0-0-dev:$CROSS_DEB_ARCH
+RUN --mount=type=cache,target=/usr/local/lib/python3.8/dist-packages \
+    pip3 install numpy

@@ -7,7 +7,7 @@
 # The `Hakufile` in the workspace root has everything you're looking for.
 services:
   aa_app:
-    platform: "linux/arm64"
+    platform: "linux/amd64"
     build:
       args:
         - PLATFORM_BASE_IMAGE=balenalib/amd64-ubuntu:jammy-run
@@ -29,9 +29,5 @@ services:
   # TODO: This is only appropriate in staging environments. Remove before we
   # go live.
   watchtower:
-    image: containrrr/watchtower
-    platform: "linux/arm64"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /home/pi/.docker/config.json:/config.json
-    command: --interval 30
+    image: containrrr/watchtower:amd64-latest
+    platform: "linux/amd64"

@@ -11,8 +11,6 @@ use const_format::formatc;
 
 const TFLITE_SUPPORT_GIT_URL: &str = "https://github.com/shyndman/tflite-support.git";
 const TFLITE_SUPPORT_GIT_TAG: &str = "v0.4.3+scott";
-const BAZEL_COPTS_ENV_VAR: &str = "TFLITEC_BAZEL_COPTS";
-const PREBUILT_PATH_ENV_VAR: &str = "TFLITEC_PREBUILT_PATH";
 
 const SHARED_LIB_STEM: &str = "object_detector_c";
 const SHARED_LIB_REL_PATH: &str = "tensorflow_lite_support/c/bindgen";
@@ -60,12 +58,6 @@ fn generate_bindgen_layout_tests() -> bool {
     env::var("BINDGEN_TESTS").unwrap_or("0".into()) == "1"
 }
 
-fn normalized_target() -> Option<String> {
-    env::var("TARGET")
-        .ok()
-        .map(|t| t.to_uppercase().replace('-', "_"))
-}
-
 fn out_dir() -> PathBuf {
     PathBuf::from(env::var("OUT_DIR").unwrap())
 }
@@ -99,15 +91,6 @@ fn main() -> Result<()> {
         println!("{key}: {value}");
     }
 
-    println!("cargo:rerun-if-env-changed={}", BAZEL_COPTS_ENV_VAR);
-    println!("cargo:rerun-if-env-changed={}", PREBUILT_PATH_ENV_VAR);
-    if let Some(target) = normalized_target() {
-        println!(
-            "cargo:rerun-if-env-changed={}_{}",
-            PREBUILT_PATH_ENV_VAR, target
-        );
-    }
-
     let out_path = out_dir();
     println!(
         "cargo:rustc-link-search=native={}",
@@ -119,7 +102,6 @@ fn main() -> Result<()> {
     let config = target_os();
     let tf_src_path = out_path.join(format!("tflite_support_{}", TFLITE_SUPPORT_GIT_TAG));
 
-    check_and_set_envs();
     prepare_tensorflow_source(tf_src_path.as_path());
     configure_build(tf_src_path.as_path());
     build_tensorflow_with_bazel(tf_src_path.to_str().unwrap(), config.as_str())?;
@@ -174,8 +156,11 @@ fn check_and_set_envs() {
 fn prepare_tensorflow_source(tf_src_path: &Path) {
     let complete_clone_hint_file = tf_src_path.join(".complete_clone");
     if complete_clone_hint_file.exists() {
+        eprintln!("Clone hint found. Not fetching repo.",);
         return;
     }
+
+    check_and_set_envs();
 
     if tf_src_path.exists() {
         std::fs::remove_dir_all(tf_src_path).expect("Cannot clean tf_src_path");
@@ -289,7 +274,7 @@ fn build_tensorflow_with_bazel(
         .join("bindgen");
 
     let shared_lib_basename =
-        format!("{}{SHARED_LIB_STEM}.{}", dll_prefix(), dll_extension());
+        format!("{}{}.{}", dll_prefix(), SHARED_LIB_STEM, dll_extension());
     let output_shared_lib_path = libc_out_dir.join(shared_lib_basename.clone());
 
     let mut bazel =
@@ -345,13 +330,6 @@ fn build_tensorflow_with_bazel(
         .arg(format!("--config={}", bazel_config_option))
         .arg(SHARED_LIB_BAZEL_TARGET)
         .current_dir(tf_src_path);
-
-    if let Ok(copts) = env::var(BAZEL_COPTS_ENV_VAR) {
-        let copts = copts.split_ascii_whitespace();
-        for opt in copts {
-            bazel.arg(format!("--copt={}", opt));
-        }
-    }
 
     eprintln!("Bazel Build Command: {:?}", bazel);
     if !bazel.status().expect("Cannot execute bazel").success() {

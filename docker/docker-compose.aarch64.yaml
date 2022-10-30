@@ -30,9 +30,5 @@ services:
   # TODO: This is only appropriate in staging environments. Remove before we
   # go live.
   watchtower:
-    image: containrrr/watchtower
+    image: containrrr/watchtower:arm64v8-latest
     platform: "linux/arm64"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /home/pi/.docker/config.json:/config.json
-    command: --interval 30

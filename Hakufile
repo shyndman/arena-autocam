@@ -1,14 +1,6 @@
 import "tasks/env_check.haku"
 
-is_debug_profile = $profile == 'dev'
-if $is_debug_profile:
-  build_profile_subdir = 'debug'
-elseif $profile == 'release':
-  build_profile_subdir = 'release'
-end
-
-assert $build_profile_subdir, "Profile not recognized ${PROFILE}"
-set-env("BUILD_PROFILE_SUBDIR", $build_profile_subdir)
+BUILDER_NAME = 'arena-autocam_builder'
 
 package_home = `readlink --canonicalize .`
 cargo_target_dir = join($package_home, "target")
@@ -19,6 +11,10 @@ set-env("RUST_BACKTRACE", "full")
 if ! ${CARGO_LOG}:
   set-env("CARGO_LOG", "cargo::core::compiler::fingerprint=info")
 end
+
+# Docker globals
+docker_cmd_with_opts = "docker --log-level=info"
+set-env("BUILDKIT_PROGRESS", "plain")
 
 # Computed by _setup_target_docker_compose_string
 target_docker_compose_string = "NOT SET"
@@ -37,25 +33,27 @@ _setup_target_docker_compose_string:
     compose_file_args = "${compose_file_args} --file docker/docker-compose.amd64.yaml"
   end
 
-  convert_result = `FROM_HAKU=1 docker compose ${compose_file_args} convert`
+  convert_result = `FROM_HAKU=1 ${docker_cmd_with_opts} compose ${compose_file_args} convert`
   if ! ${convert_result}:
     error 'Failed to merge docker-compose files'
+  else:
+    println($convert_result)
   end
   convert_result = replace(${convert_result}, "\n", '\\n')
   # Set the global variable
   target_docker_compose_string = ${convert_result}
 
 ## Builds the app using the provided `PROFILE` and `TARGET` environment variables
-build: setup_target_docker_compose_string
-  compose_file_args = "--file docker/docker-compose.yaml"
+build: prepare_env setup_target_docker_compose_string
   if ${target} == ${AARCH64_TARGET_TRIPLE}:
+    bazel_cache_host_path = "target/${TARGET}/${AA_BUILD_PROFILE}/aa_bazel_cache"
+    mkdir -p ${bazel_cache_host_path}
+
     # Use cross to build the ARM target in a Docker container.
-    build_cmd = "cross"
-    compose_file_args = "${compose_file_args} --file docker/docker-compose.aarch64.yaml"
+    build_cmd = "AA_BAZEL_CACHE='${bazel_cache_host_path}' CROSS_RUNNER='' cross"
   else
     # If we're X86_64, use regular old Cargo
     build_cmd = "cargo"
-    compose_file_args = "${compose_file_args} --file docker/docker-compose.amd64.yaml"
   end
 
   # Now we should have all the build arifacts sitting in target/{target}/{profile}
@@ -65,29 +63,26 @@ build: setup_target_docker_compose_string
 
   # DOCKER
   # Create a new set of images from the merged docker-compose
-  bake_command = "echo '${target_docker_compose_string}' | \
-      docker buildx bake --progress=plain --load --file -"
-  ${bake_command}
+  bake_cmd = "echo '${target_docker_compose_string}' | \
+      ${docker_cmd_with_opts} buildx bake --progress=plain --load --file -"
+  ${bake_cmd}
 
   # Push the images to our private repo (its address is stored in the
   # .env file)
-  push_command = "echo '${target_docker_compose_string}' | \
-      docker compose --file - push"
-  ${push_command}
+  push_cmd = "echo '${target_docker_compose_string}' | \
+      ${docker_cmd_with_opts} compose --file - push"
+  ${push_cmd}
 
-run: build
+run: setup_target_docker_compose_string
     docker_context_arg = ""
-    compose_file_args = "--file docker-compose.yaml"
     if ${target} == ${AARCH64_TARGET_TRIPLE}:
       docker_context_arg = "--context=pi-horsie"
-      compose_file_args = "${compose_file_args} --file docker-compose.aarch64.yaml"
-    else
-      compose_file_args = "${compose_file_args} --file docker-compose.amd64.yaml"
     end
 
-    cd docker
-    docker ${docker_context_arg} compose ${compose_file_args} up
-    cd -
+    up_cmd = "echo '${target_docker_compose_string}' | \
+        ${docker_cmd_with_opts} ${docker_context_arg} compose --file - up \
+        --pull always --no-build"
+    ${up_cmd}
 
 ## Sets environment variables needed by the example pipelines
 _setup-pipeline-env:
@@ -95,19 +90,71 @@ _setup-pipeline-env:
     error "CARGO env not set"
   end
 
-  set-env("CARGO_TARGET_PROFILE_DIR", join($cargo_target_dir, $build_profile_subdir))
+  set-env("CARGO_TARGET_PROFILE_DIR", join($cargo_target_dir, $build_profile))
   set-env("AA_LIB_SUPPORT_DIR", join($CARGO_TARGET_PROFILE_DIR, "lib/support"))
   set-env("AA_LIB_GST_DIR", join($CARGO_TARGET_PROFILE_DIR, "lib/gst"))
   set-env("AA_PATHS_SET", 1)
 
-## Builds the images used by Cross to perform cross compilation
-_build-cross-compiling-docker-images:
-  docker build \
-      --tag arena-autocam/build-aarch64:latest \
-      --build-arg 'CROSS_DEB_ARCH=arm64' \
-      --build-arg 'CROSS_BASE_IMAGE=ghcr.io/cross-rs/${AARCH64_TARGET_TRIPLE}:0.2.4' \
-      --file docker/Dockerfile.build.${AARCH64_TARGET_TRIPLE} \
-      ${package_home}
+create_builder:
+  # The caller can force the creation of a builder (which we implement by
+  # destroying it first)
+  if is_set('create_builder_force'):
+    @docker buildx rm ${BUILDER_NAME}
+  end
+
+  has_builder = `docker buildx use ${BUILDER_NAME}`
+  if !${has_builder}:
+    # Build a builder with local platforms
+    docker buildx create --driver=docker-container \
+        --name=${BUILDER_NAME} \
+        --config ${package_home}/docker/config/buildkitd.toml \
+        --driver-opt=network=host \
+        --bootstrap --use \
+        --buildkitd-flags '--allow-insecure-entitlement security.insecure' \
+        ${invoke-dir()}
+  end
+
+## Builds the Docker images used to build the application
+build_platform_builder_bases: create_builder
+  image_base_name = "ubuntu-desktop.local:5000/arena-autocam/builder_base"
+  platform_image_names = ""
+
+  for platform in ${DOCKER_PLATFORMS}:
+    os = field-sep($platform, "/", 0)
+    arch = field-sep($platform, "/", 1)
+    image_name = "${image_base_name}_${arch}"
+    tagged_image_name = "${image_name}:latest"
+    build_cache_image_name = "${image_name}:build-cache"
+
+    # Build the platform image
+    ${docker_cmd_with_opts} buildx build \
+      --builder=${BUILDER_NAME} \
+      --cache-from=type=registry,ref=${build_cache_image_name} \
+      --cache-to=type=registry,ref=${build_cache_image_name},mode=max \
+      --allow=network.host,security.insecure \
+      --network=host \
+      --progress=plain \
+      --file=docker/Dockerfile.${arch}.base \
+      --platform=${platform} \
+      --target=shell_setup \
+      --tag=${tagged_image_name} \
+      --output type=image,push=true \
+      ${package_home}/docker
+
+    # Push the platform image to our private registry
+    # ${docker_cmd_with_opts} image push ${tagged_image_name}
+
+    # Record the name of the built image
+    platform_image_names = "${platform_image_names} ${tagged_image_name}"
+  end
+
+  # Create and push the multi-arch manifest
+  multiplatform_image_name = "${image_base_name}:latest"
+  ${docker_cmd_with_opts} manifest create --amend --insecure \
+      ${multiplatform_image_name} \
+      ${platform_image_names}
+  ${docker_cmd_with_opts} manifest push --insecure ${multiplatform_image_name}
+
 
 _copy-shared-libraries: setup-pipeline-env
   profile_target_path=$CARGO_TARGET_PROFILE_DIR
