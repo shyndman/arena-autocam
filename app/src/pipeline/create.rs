@@ -1,15 +1,15 @@
-use anyhow::Error;
+use anyhow::{Error, Result};
 use gst::prelude::*;
 
 use super::camera::{setup_camera_src, CameraSrcInfo};
-use super::PIPE_CAT;
+use super::{names, PIPE_CAT};
 use crate::{
     infer::{build_detection_overlay, DetectionSink},
     logging::*,
     util::find_sink_pad,
 };
 
-pub fn create_pipeline() -> Result<(glib::MainLoop, gst::Pipeline), Error> {
+pub fn create_pipeline() -> Result<(glib::MainLoop, gst::Pipeline)> {
     gst::init()?;
     gst::update_registry()?;
 
@@ -101,7 +101,7 @@ fn create_display_stream_persistence_branch(
         .property("config-interval", -1)
         .build()?;
     let chunk_file_writer = gst::ElementFactory::make("splitmuxsink")
-        .name("display.persist.multifile_sink")
+        .name(names::PERSISTENCE_SINK)
         .property("max-size-time", 10.minutes().nseconds())
         .property("muxer-factory", "matroskamux")
         .property("location", "video%05d.mp4")
@@ -181,7 +181,7 @@ fn create_infer_stream_pipeline(
         .property("max-size-buffers", 1u32)
         .build()?;
 
-    let infer_detection_sink = DetectionSink::new(Some("infer.detection_sink"));
+    let infer_detection_sink = DetectionSink::new(Some(names::DETECTION_SINK));
     infer_detection_sink.set_property("bus", &bus);
 
     pipeline.add(&infer_leaky_queue)?;

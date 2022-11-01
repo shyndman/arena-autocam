@@ -1,12 +1,10 @@
-use anyhow::Error;
+use anyhow::Result;
 use gst::prelude::*;
 
 use super::RUN_CAT;
 use crate::{logging::*, tracing::trace_graph_state_change};
 
-pub fn run_main_loop(
-    (main_loop, pipeline): (glib::MainLoop, gst::Pipeline),
-) -> Result<(), Error> {
+pub fn run_main_loop((main_loop, pipeline): (glib::MainLoop, gst::Pipeline)) -> Result<()> {
     info!(RUN_CAT, obj: &pipeline, "Starting main loop");
 
     pipeline.set_state(gst::State::Playing)?;

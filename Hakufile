@@ -161,10 +161,10 @@ run-aainferpass-pipeline: setup-gst-env
 
 
 run-app-test:
-  cd app
   dot_dir = `pwd`
-  dot_dir = "${dot_dir}/tmp"
+  dot_dir = "${dot_dir}/app/tmp"
   rm -rf ${dot_dir} && mkdir ${dot_dir}
+  set-env('GST_DEBUG_DUMP_DOT_DIR', $dot_dir)
 
   # set-env('LIBCAMERA_LOG_LEVELS', '*:DEBUG')
   set-env('GST_PLUGIN_PATH', '/usr/local/lib/x86_64-linux-gnu/gstreamer-1.0:/usr/lib/x86_64-linux-gnu/gstreamer-1.0/:/home/shyndman/dev/gst-plugins-rs/target/debug/')
@@ -172,11 +172,12 @@ run-app-test:
   if !$GST_DEBUG:
     set-env('GST_DEBUG', 'AA_*:5,6')
   end
-  set-env('GST_DEBUG_DUMP_DOT_DIR', $dot_dir)
 
-  cargo run --bin=aa-app --profile=dev
-
-  #2>&1 | sed --regexp-extended 's/\\([ =(),])/\1/g' | awk '{$1=$2=$3=""; print $0}'
+  temp_dir_path = "target/${build_profile_subdir}/videos"
+  mkdir -p ${temp_dir_path}
+  cargo run --bin=aa-app --profile=dev -- \
+      --model-path sample_data/detection-model.tflite \
+      --temp-dir-path ${temp_dir_path}
 
 clean:
   cargo clean

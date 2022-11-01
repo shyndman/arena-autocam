@@ -1,4 +1,6 @@
-use anyhow::Error;
+use std::path::PathBuf;
+
+use anyhow::{Error, Result};
 use cairo::Rectangle;
 use glib::EnumValue;
 use gst::{prelude::ElementExtManual, traits::GstObjectExt};
@@ -11,7 +13,7 @@ pub fn name_of_enum_value(value: &glib::Value) -> Option<&str> {
 }
 
 /// Finds and returns an element's default src pad.
-pub fn find_src_pad(element: &gst::Element) -> Result<gst::Pad, Error> {
+pub fn find_src_pad(element: &gst::Element) -> Result<gst::Pad> {
     element
         .src_pads()
         .iter()
@@ -22,12 +24,19 @@ pub fn find_src_pad(element: &gst::Element) -> Result<gst::Pad, Error> {
 }
 
 /// Finds and returns an element's sink pad.
-pub fn find_sink_pad(element: &gst::Element) -> Result<gst::Pad, Error> {
+pub fn find_sink_pad(element: &gst::Element) -> Result<gst::Pad> {
     element
         .sink_pads()
         .first()
         .map(|pad_ref| pad_ref.to_owned())
         .ok_or(Error::msg("No sink pad found"))
+}
+
+pub fn to_canonicalized_path_string(path: &PathBuf) -> Result<String> {
+    path.canonicalize()?
+        .to_str()
+        .ok_or(anyhow::anyhow!("Could not convert path to str"))
+        .and_then(|s| Result::Ok(s.to_string()))
 }
 
 pub fn random_fraction_rect() -> Rectangle {

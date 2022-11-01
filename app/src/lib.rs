@@ -1,5 +1,6 @@
 #![feature(array_methods)]
 
+pub mod config;
 pub mod infer;
 pub mod logging;
 pub mod message;

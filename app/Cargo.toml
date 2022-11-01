@@ -17,10 +17,12 @@ path = "src/lib.rs"
 tflite-support = { path = "../tflite_support" }
 
 # 3rd party dependencies
-anyhow = "1.0.66"
+anyhow = { version = "1.0.66", features = ["backtrace"] }
 byte-slice-cast = "1.2.2"
 cairo-rs = "0.16.1"
+clap = { version = "4.0.18", features = ["derive"] }
 derive_more = "0.99.17"
+figment = { version = "0.10.8", features = ["toml"] }
 glib = "0.16.2"
 gst = { package = "gstreamer", version = "0.19" }
 gst-app = { package = "gstreamer-app", version = "0.19" }
@@ -31,9 +33,15 @@ lazy_static = "1.4.0"
 once_cell = "1.15.0"
 rand = "0.8.5"
 regex = "1.6.0"
+serde = "1.0.147"
+serde_derive = "1.0.147"
 strum = "0.24.1"
 strum_macros = "0.24.3"
 termion = "2.0.1"
+textwrap = "0.16.0"
+toml = "0.5.9"
+chrono = "0.4.22"
+strfmt = "0.2.2"
 
 [features]
 default = ["synthesize-libcamera-streams"]
