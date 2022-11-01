@@ -1,3 +1,4 @@
+mod error;
 mod object_detector;
 
 pub(crate) mod bindings {

@@ -5,15 +5,20 @@ use std::{
     slice::from_raw_parts,
 };
 
-use crate::bindings::{
-    TfLiteCategory, TfLiteDetection, TfLiteDetectionResult, TfLiteDetectionResultDelete,
-    TfLiteFrameBuffer, TfLiteObjectDetector, TfLiteObjectDetectorDelete,
-    TfLiteObjectDetectorDetect, TfLiteObjectDetectorFromOptions, TfLiteObjectDetectorOptions,
-    TfLiteObjectDetectorOptionsCreate, TfLiteSupportError, TfLiteSupportErrorCode,
-    TfLiteSupportErrorDelete,
+use anyhow::Result;
+
+use crate::{
+    bindings::{
+        TfLiteCategory, TfLiteDetection, TfLiteDetectionResult, TfLiteDetectionResultDelete,
+        TfLiteFrameBuffer, TfLiteObjectDetector, TfLiteObjectDetectorDelete,
+        TfLiteObjectDetectorDetect, TfLiteObjectDetectorFromOptions,
+        TfLiteObjectDetectorOptions, TfLiteObjectDetectorOptionsCreate, TfLiteSupportError,
+        TfLiteSupportErrorCode, TfLiteSupportErrorDelete,
+    },
+    error::Error,
 };
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct BaseOptions {
     pub model_path: String,
     pub num_threads: i32,
@@ -21,6 +26,7 @@ pub struct BaseOptions {
     pub enable_coral: bool,
 }
 
+#[derive(Debug, Default)]
 pub struct DetectionOptions {
     pub score_threshold: Option<f32>,
     pub max_results: Option<i32>,
@@ -33,6 +39,7 @@ pub struct DetectionOptions {
 pub struct ObjectDetector {
     native_detector: *mut TfLiteObjectDetector,
 }
+unsafe impl Send for ObjectDetector {}
 unsafe impl Sync for ObjectDetector {}
 
 impl ObjectDetector {
@@ -233,22 +240,29 @@ pub struct Rect {
     pub height: i32,
 }
 
-/// The error type for TensorFlow Lite operations.
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
-pub struct Error {
-    // TODO(shyndman): Have this mirror the support error type
-    pub code: TfLiteSupportErrorCode,
-    pub message: String,
-}
-
 #[cfg(test)]
 mod tests {
+    extern crate findshlibs;
+    use findshlibs::{Segment, SharedLibrary, TargetSharedLibrary};
+
     use super::{BaseOptions, DetectionOptions, ObjectDetector};
 
     const MODEL_PATH: &'static str = "tests/sample.tflite";
 
     #[test]
     fn test_detector_with_model_path() {
+        TargetSharedLibrary::each(|shlib| {
+            println!("{}", shlib.name().to_string_lossy());
+
+            for seg in shlib.segments() {
+                println!(
+                    "    {}: segment {}",
+                    seg.actual_virtual_memory_address(shlib),
+                    seg.name()
+                );
+            }
+        });
+
         let base_opts = BaseOptions {
             model_path: MODEL_PATH.into(),
             num_threads: 3,

@@ -6,6 +6,7 @@ use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
+use anyhow::Result;
 use const_format::formatc;
 
 const TFLITE_SUPPORT_GIT_URL: &str = "https://github.com/shyndman/tflite-support.git";
@@ -69,7 +70,27 @@ fn out_dir() -> PathBuf {
     PathBuf::from(env::var("OUT_DIR").unwrap())
 }
 
-fn main() {
+fn shared_library_path() -> PathBuf {
+    out_dir().join("lib")
+}
+
+fn new_bazel_command(
+    subcommand: &str,
+    bazel_options: Option<Vec<&str>>,
+) -> std::process::Command {
+    let mut cmd = std::process::Command::new("bazel");
+    if let Some(options) = bazel_options {
+        cmd.args(options.into_iter());
+    }
+    cmd.arg(subcommand)
+        .arg("--remote_cache")
+        .arg("grpc://ubuntu-desktop.local:9092")
+        .arg("--experimental_remote_downloader")
+        .arg("grpc://ubuntu-desktop.local:9092");
+    cmd
+}
+
+fn main() -> Result<()> {
     eprintln!("Building TfLite Support");
     eprintln!("is_debug: {}", is_debug_build());
     eprintln!("target_arch: {}", target_arch());
@@ -88,7 +109,10 @@ fn main() {
     }
 
     let out_path = out_dir();
-    println!("cargo:rustc-link-search=native={}", out_path.display());
+    println!(
+        "cargo:rustc-link-search=native={}",
+        shared_library_path().display()
+    );
     println!("cargo:rustc-link-lib=dylib=object_detector_c");
 
     // Build from source
@@ -98,10 +122,12 @@ fn main() {
     check_and_set_envs();
     prepare_tensorflow_source(tf_src_path.as_path());
     configure_build(tf_src_path.as_path());
-    build_tensorflow_with_bazel(tf_src_path.to_str().unwrap(), config.as_str());
+    build_tensorflow_with_bazel(tf_src_path.to_str().unwrap(), config.as_str())?;
 
     // Generate bindings using headers
     generate_bindings(tf_src_path);
+
+    Ok(())
 }
 
 fn check_and_set_envs() {
@@ -186,6 +212,17 @@ fn prepare_tensorflow_source(tf_src_path: &Path) {
         PathBuf::from("build-res/shared_libs.bzl"),
         bindgen_build_path,
     );
+
+    let bindgen_exported_symbols_path =
+        bindgen_path.join("tflite_support_version_script.lds");
+    eprintln!(
+        "Copying exported symbols file into tflite_support source tree, dest={:?}",
+        bindgen_exported_symbols_path
+    );
+    copy_or_overwrite(
+        PathBuf::from("build-res/tflite_support_version_script.lds"),
+        bindgen_exported_symbols_path,
+    );
 }
 
 fn configure_build(tf_src_path: &Path) {
@@ -197,8 +234,7 @@ fn configure_build(tf_src_path: &Path) {
     }
 
     // Grab the configure.py file from the tensorflow repo
-    std::process::Command::new("bazel")
-        .arg("build")
+    new_bazel_command("build", None)
         .arg(CONFIGURE_TARGET)
         .current_dir(tf_src_path)
         .status()
@@ -207,8 +243,7 @@ fn configure_build(tf_src_path: &Path) {
     // Copy it over to the repo root
     let query_out = unsafe {
         String::from_utf8_unchecked(
-            std::process::Command::new("bazel")
-                .arg("query")
+            new_bazel_command("query", None)
                 .arg("--output")
                 .arg("location")
                 .arg(CONFIGURE_TARGET)
@@ -218,6 +253,7 @@ fn configure_build(tf_src_path: &Path) {
                 .stdout,
         )
     };
+
     let configure_path = query_out
         .get(
             ..query_out
@@ -242,7 +278,10 @@ fn configure_build(tf_src_path: &Path) {
     }
 }
 
-fn build_tensorflow_with_bazel(tf_src_path: &str, bazel_config_option: &str) {
+fn build_tensorflow_with_bazel(
+    tf_src_path: &str,
+    bazel_config_option: &str,
+) -> anyhow::Result<()> {
     let libc_out_dir = PathBuf::from(tf_src_path)
         .join("bazel-bin")
         .join("tensorflow_lite_support")
@@ -253,13 +292,11 @@ fn build_tensorflow_with_bazel(tf_src_path: &str, bazel_config_option: &str) {
         format!("{}{SHARED_LIB_STEM}.{}", dll_prefix(), dll_extension());
     let output_shared_lib_path = libc_out_dir.join(shared_lib_basename.clone());
 
-    let mut bazel = std::process::Command::new("bazel");
-    bazel
-        .arg("--bazelrc")
-        .arg(".tf_configure.bazelrc")
-        .arg("build")
-        // We always want verbose failures
-        .arg("--verbose_failures");
+    let mut bazel =
+        new_bazel_command("build", Some(vec!["--bazelrc", ".tf_configure.bazelrc"]));
+
+    // We always want verbose failures
+    bazel.arg("--verbose_failures");
 
     if is_debug_build() {
         bazel
@@ -321,8 +358,12 @@ fn build_tensorflow_with_bazel(tf_src_path: &str, bazel_config_option: &str) {
         panic!("Cannot build Tensorflow Lite Support");
     }
 
-    let c_lib_out = out_dir().join("libobject_detector_c.so");
+    let lib_path = shared_library_path();
+    std::fs::create_dir_all(&lib_path)?;
+    let c_lib_out = lib_path.join("libobject_detector_c.so");
     copy_or_overwrite(&output_shared_lib_path, &c_lib_out);
+
+    Ok(())
 }
 
 fn generate_bindings(tf_src_path: PathBuf) {

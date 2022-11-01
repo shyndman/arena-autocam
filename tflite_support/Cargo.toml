@@ -15,7 +15,13 @@ xnnpack_qu8 = ["xnnpack"]
 xnnpack_qs8 = ["xnnpack"]
 coral_tpu = []
 
+[dependencies]
+anyhow = "1.0.66"
+derive_more = "0.99.17"
+findshlibs = "0.10.2"
+
 [build-dependencies]
+anyhow = "1.0.66"
 bindgen = "0.60.1"
 fs_extra = "1.2.0"
 

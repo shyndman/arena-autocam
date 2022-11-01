@@ -1,2 +1,2 @@
 [workspace]
-members = ["app", "gst_tflite_infer", "tflite_support"]
+members = ["app", "tflite_support"]
