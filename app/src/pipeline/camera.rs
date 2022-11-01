@@ -63,6 +63,7 @@ fn synthesize_libcamera_streams(pipeline: &gst::Pipeline) -> Result<CameraSrcInf
     let splitter = gst::ElementFactory::make("tee")
         .name("camera.tee")
         .build()?;
+
     pipeline.add_many(&[&camera, &decode_jpeg, &splitter])?;
     camera.link_pads_filtered(Some("src"), &decode_jpeg, Some("sink"), &raw_jpeg_caps)?;
     decode_jpeg.link_filtered(

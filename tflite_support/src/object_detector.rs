@@ -226,6 +226,10 @@ impl DetectionCategory {
         c_str.to_str().unwrap()
     }
 
+    pub fn label_as_string(&self) -> String {
+        self.label().clone().into()
+    }
+
     pub fn display_name(&self) -> &str {
         let c_str = unsafe { CStr::from_ptr((*self.native_category).display_name) };
         c_str.to_str().unwrap()

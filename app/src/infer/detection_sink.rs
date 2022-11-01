@@ -15,45 +15,109 @@ mod imp {
     use std::sync::Mutex;
 
     use anyhow::Result;
+    use cairo::Rectangle;
     use glib::{ParamSpecBuilderExt, ToValue};
     use gst::{debug, glib, info, subclass::prelude::*, FlowError, Fraction};
     use gst_base::subclass::prelude::*;
     use gst_video::{subclass::prelude::*, VideoCapsBuilder, VideoFormat, VideoInfo};
     use once_cell::sync::Lazy;
-    use rand::Rng;
+    use tflite_support::{BaseOptions, DetectionOptions, DetectionResult, ObjectDetector};
 
     use super::CAT;
     use crate::{
+        infer::tf_buffer_adapter::TensorflowBufferAdapter,
         message::{DetectionFrameDone, DetectionFrameStart, DetectionMsg, ObjectDetection},
-        util::random_fraction_rect,
     };
 
     #[derive(Default)]
-    struct Settings {
+    struct PropsStorage {
         model_location: Option<String>,
         max_results: u32,
         score_threshold: f32,
         bus: Option<gst::Bus>,
+        model_invalidated: bool,
     }
 
     // Struct containing all the element data
     #[derive(Default)]
     pub struct DetectionSink {
-        info: Mutex<Option<VideoInfo>>,
-        settings: Mutex<Settings>,
+        props_storage: Mutex<PropsStorage>,
+        video_info: Mutex<Option<VideoInfo>>,
+        object_detector: Mutex<Option<ObjectDetector>>,
     }
 
     impl DetectionSink {
+        fn get_dimensions(&self) -> Result<(f64, f64)> {
+            let info_guard = self.video_info.lock().unwrap();
+            let info = info_guard.as_ref().unwrap();
+            Ok((info.width() as f64, info.height() as f64))
+        }
+
         fn post_to_bus(&self, msg: gst::Message) -> Result<()> {
             debug!(CAT, obj: self.instance(), "Posting message on bus, {:?}", msg);
 
-            let settings = self.settings.lock().unwrap();
-            if let Some(bus) = settings.bus.as_ref() {
+            let props_guard = self.props_storage.lock().unwrap();
+            if let Some(bus) = props_guard.bus.as_ref() {
                 bus.post(msg)?;
                 Ok(())
             } else {
                 Err(anyhow::Error::msg("No bus assigned"))
             }
+        }
+
+        fn is_model_invalidated(&self) -> bool {
+            let props_guard = self.props_storage.lock().unwrap();
+            props_guard.model_invalidated && props_guard.model_location.is_some()
+        }
+
+        fn create_inference_model(&self) -> Result<()> {
+            let mut props_guard = self.props_storage.lock().unwrap();
+            let model_location = props_guard.model_location.as_ref().unwrap();
+            info!(
+                CAT,
+                "Creating new inference model, path={}", &model_location
+            );
+
+            let object_detector = ObjectDetector::with_options(
+                BaseOptions {
+                    model_path: model_location.clone(),
+                    ..Default::default()
+                },
+                DetectionOptions {
+                    max_results: Some(props_guard.max_results as i32),
+                    score_threshold: Some(props_guard.score_threshold),
+                },
+            )?;
+
+            let mut detector_guard = self.object_detector.lock().unwrap();
+            *detector_guard = Some(object_detector);
+            props_guard.model_invalidated = false;
+
+            Ok(())
+        }
+
+        fn perform_detection(
+            &self,
+            buffer: &gst::Buffer,
+        ) -> Result<DetectionResult, gst::FlowError> {
+            let mut info_guard = self.video_info.lock().unwrap();
+            let video_info = info_guard.as_mut().ok_or_else(|| {
+                gst::element_error!(
+                    &self.obj(),
+                    gst::CoreError::Negotiation,
+                    ["Have no info yet"]
+                );
+                gst::FlowError::NotNegotiated
+            })?;
+
+            let detector_guard = self.object_detector.lock().unwrap();
+            let detector = detector_guard
+                .as_ref()
+                .expect("We don't have an object detector, but should");
+
+            Ok(detector
+                .detect(TensorflowBufferAdapter { video_info, buffer })
+                .map_err(|_| FlowError::Error)?)
         }
     }
 
@@ -101,29 +165,34 @@ mod imp {
         }
 
         fn set_property(&self, _id: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
-            let mut settings = self.settings.lock().unwrap();
+            info!(CAT, "Acquiring props lock");
+            let mut props_guard = self.props_storage.lock().unwrap();
             match pspec.name() {
                 "model-location" => {
-                    settings.model_location = value.get().expect("type checked upstream")
+                    props_guard.model_location = value.get().expect("type checked upstream");
+                    props_guard.model_invalidated = true
                 }
                 "max-results" => {
-                    settings.max_results = value.get::<u32>().expect("type checked upstream")
+                    props_guard.max_results = value.get::<u32>().expect("type checked upstream");
+                    props_guard.model_invalidated = true
                 }
                 "score-threshold" => {
-                    settings.score_threshold = value.get().expect("type checked upstream")
+                    props_guard.score_threshold = value.get().expect("type checked upstream");
+                    props_guard.model_invalidated = true
                 }
-                "bus" => settings.bus = value.get().expect("type checked upstream"),
+                "bus" => props_guard.bus = value.get().expect("type checked upstream"),
                 _ => unimplemented!(),
             }
         }
 
         fn property(&self, _id: usize, pspec: &glib::ParamSpec) -> glib::Value {
-            let settings = self.settings.lock().unwrap();
+            info!(CAT, "Acquiring props lock");
+            let props_guard = self.props_storage.lock().unwrap();
             match pspec.name() {
-                "model-location" => settings.model_location.to_value(),
-                "max-results" => settings.max_results.to_value(),
-                "score-threshold" => settings.score_threshold.to_value(),
-                "bus" => settings.bus.to_value(),
+                "model-location" => props_guard.model_location.to_value(),
+                "max-results" => props_guard.max_results.to_value(),
+                "score-threshold" => props_guard.score_threshold.to_value(),
+                "bus" => props_guard.bus.to_value(),
                 _ => unimplemented!(),
             }
         }
@@ -176,8 +245,9 @@ mod imp {
             info!(CAT, obj: self.obj(), "Setting caps to {:?}", caps);
 
             let video_info = gst_video::VideoInfo::from_caps(caps).unwrap();
-            let mut info = self.info.lock().unwrap();
-            info.replace(video_info);
+            info!(CAT, "Acquiring video info lock");
+            let mut info_guard = self.video_info.lock().unwrap();
+            info_guard.replace(video_info);
 
             Ok(())
         }
@@ -188,19 +258,14 @@ mod imp {
             &self,
             buffer: &gst::Buffer,
         ) -> Result<gst::FlowSuccess, gst::FlowError> {
-            let mut info_guard = self.info.lock().unwrap();
-            let _info = info_guard.as_mut().ok_or_else(|| {
-                gst::element_error!(
-                    &self.obj(),
-                    gst::CoreError::Negotiation,
-                    ["Have no info yet"]
-                );
-                gst::FlowError::NotNegotiated
-            })?;
+            // Create the model if it's been invalidated, or is not yet created
+            if self.is_model_invalidated() {
+                self.create_inference_model()
+                    .map_err(|_| FlowError::Error)?;
+            }
 
+            // Notify that we're beginning the inference frame
             let dts = buffer.dts_or_pts().unwrap();
-            debug!(CAT, obj: self.obj(), "Showing frame {}", dts);
-
             self.post_to_bus(
                 gst::message::Application::builder(
                     DetectionFrameStart { dts }.to_structure(),
@@ -209,20 +274,34 @@ mod imp {
             )
             .map_err(|_| FlowError::Error)?;
 
-            std::thread::sleep(std::time::Duration::from_millis(1000 / 3));
+            // Run object detection on the frame
+            let res = self.perform_detection(buffer)?;
 
-            let mut r = rand::thread_rng();
-            if r.gen_range(0.0..=1.0) > 0.4 {
-                let score = 0.44f32;
-                let bounds = random_fraction_rect();
-                let label = String::from("horse");
+            for d in res.detections() {
+                let (score, label) = {
+                    let first_category = d
+                        .categories()
+                        .next()
+                        .expect("A detection result should have at least one category");
+                    (first_category.score(), first_category.label_as_string())
+                };
+
+                let (w, h) = self.get_dimensions().unwrap();
+                let object_bounds = d.bounding_box();
+                let fractional_bounds = Rectangle::new(
+                    object_bounds.x as f64 / w,
+                    object_bounds.y as f64 / h,
+                    object_bounds.width as f64 / w,
+                    object_bounds.height as f64 / h,
+                );
+
                 self.post_to_bus(
                     gst::message::Application::builder(
                         ObjectDetection {
                             dts,
-                            label,
+                            label: label.into(),
                             score,
-                            bounds,
+                            bounds: fractional_bounds,
                         }
                         .to_structure(),
                     )
@@ -231,12 +310,12 @@ mod imp {
                 .map_err(|_| FlowError::Error)?;
             }
 
-            let objects_detected = 3;
+            // Signal that the frame is now complete
             self.post_to_bus(
                 gst::message::Application::builder(
                     DetectionFrameDone {
                         dts,
-                        detection_count: objects_detected,
+                        detection_count: res.size() as i32,
                     }
                     .to_structure(),
                 )

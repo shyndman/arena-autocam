@@ -83,8 +83,8 @@ pub fn build_detection_overlay(name: &str, bus: &gst::Bus) -> Result<gst::Elemen
                 let msg: ObjectDetection = app_msg_structure.try_into().unwrap();
                 trace!(CAT, "Parsed ObjectDetection");
 
-                let state = &mut state_clone.lock().unwrap();
-                let detections = &mut state.detections;
+                let guard = &mut state_clone.lock().unwrap();
+                let detections = &mut guard.detections;
                 detections.push_back(msg);
             }
             "detection-frame-done" => {
@@ -105,21 +105,23 @@ pub fn build_detection_overlay(name: &str, bus: &gst::Bus) -> Result<gst::Elemen
         let _overlay = args[0].get::<gst::Element>().unwrap();
         let ctx = args[1].get::<cairo::Context>().unwrap();
         let _dur = args[3].get::<gst::ClockTime>().unwrap();
-        let state = &mut state_clone.lock().unwrap();
-
-        debug!(CAT, "Drawing overlay frame, {}", ts);
+        let state_guard = &mut state_clone.lock().unwrap();
 
         let (w, h) = {
-            let info = state.info.as_ref().unwrap();
+            let info = state_guard.info.as_ref().unwrap();
             (info.width() as f64, info.height() as f64)
         };
+
+        let detections = &mut state_guard.detections;
+        if detections.is_empty() {
+            return None;
+        }
 
         fn life_elapsed(frame_ts: ClockTime, detect_ts: ClockTime) -> f64 {
             (frame_ts - detect_ts).mseconds() as f64 / DETECTION_LIFETIME_MS as f64
         }
 
         // Expire old detections
-        let detections = &mut state.detections;
         while !detections.is_empty() {
             let life_elapsed_fraction = life_elapsed(ts, detections.front().unwrap().dts);
             if life_elapsed_fraction >= 1.0 {
@@ -164,8 +166,8 @@ pub fn build_detection_overlay(name: &str, bus: &gst::Bus) -> Result<gst::Elemen
         let _overlay = args[0].get::<gst::Element>().unwrap();
         let caps = args[1].get::<gst::Caps>().unwrap();
 
-        let mut drawer = state.lock().unwrap();
-        drawer.info = Some(gst_video::VideoInfo::from_caps(&caps).unwrap());
+        let mut state_guard = state.lock().unwrap();
+        state_guard.info = Some(gst_video::VideoInfo::from_caps(&caps).unwrap());
 
         None
     });

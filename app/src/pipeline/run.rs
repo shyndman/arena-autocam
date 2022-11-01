@@ -15,7 +15,7 @@ pub fn run_main_loop((main_loop, pipeline): (glib::MainLoop, gst::Pipeline)) -> 
         .expect("Pipeline without bus. Shouldn't happen!");
     let pipeline_weak = pipeline.downgrade();
     bus.connect_message(None, move |_, msg| {
-        debug!(RUN_CAT, "Received message in main loop, {:?}", msg.type_());
+        trace!(RUN_CAT, "Received message in main loop, {:?}", msg.type_());
 
         use gst::MessageView;
         let main_loop = &main_loop_clone;

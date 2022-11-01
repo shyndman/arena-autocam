@@ -176,7 +176,7 @@ run-app-test:
   mkdir -p ${graph_snapshot_dir}
   set-env('GST_DEBUG_DUMP_DOT_DIR', $dot_dir)
 
-  cargo -vvv run --bin=aa-app --profile=dev -- \
+  cargo -vvv run --bin=aa-app --profile=${PROFILE} -- \
       --model-path sample_data/detection-model.tflite \
       --temp-dir-path ${temp_dir_path}
 

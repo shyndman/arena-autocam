@@ -14,8 +14,20 @@ pub fn configure_pipeline(
     info!(CONFIGURE_CAT, "Configuring pipeline");
     let now = Instant::now();
 
-    configure_video_storage(&pipeline, config)?;
-    configure_inference(config, &pipeline)?;
+    if let Err(e) = configure_video_storage(config, &pipeline) {
+        warning!(
+            CONFIGURE_CAT,
+            "Problem encountered while configuring video storage, {}",
+            e
+        );
+    }
+    if let Err(e) = configure_inference(config, &pipeline) {
+        warning!(
+            CONFIGURE_CAT,
+            "Problem encountered while configuring inference, {}",
+            e
+        );
+    }
 
     info!(
         CONFIGURE_CAT,
@@ -27,8 +39,8 @@ pub fn configure_pipeline(
 }
 
 fn configure_video_storage(
-    pipeline: &gst::Pipeline,
     config: &Config,
+    pipeline: &gst::Pipeline,
 ) -> Result<(), anyhow::Error> {
     let storage_config = &config.video_storage;
     let persistence_sink = pipeline

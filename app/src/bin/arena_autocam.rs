@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use anyhow::Result;
 use arena_autocam::{
     config::Config,
     pipeline::{configure_pipeline, create_pipeline, run_main_loop},
@@ -19,7 +20,7 @@ pub struct Args {
     pub config: Config,
 }
 
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<()> {
     eprintln!("Starting Arena Autocam");
 
     let args = Args::parse();
@@ -32,7 +33,7 @@ fn main() -> anyhow::Result<()> {
         .and_then(|res| configure_pipeline(&config, res))
         .and_then(run_main_loop)
     {
-        Ok(r) => Ok(r),
+        Ok(_r) => Ok(()),
         Err(e) => {
             eprintln!("Error! {}", e);
             Err(e)
