@@ -8,6 +8,14 @@ pub(self) static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
     )
 });
 
+pub(self) static DETECT_CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
+    gst::DebugCategory::new(
+        "AA_DETECT",
+        gst::DebugColorFlags::FG_RED,
+        Some("Auto-Arena Detection"),
+    )
+});
+
 glib::wrapper! {
     pub struct DetectionSink(ObjectSubclass<imp::DetectionSink>) @extends gst_video::VideoSink, gst_base::BaseSink, gst::Element, gst::Object;
 }
@@ -30,7 +38,7 @@ mod imp {
     use once_cell::sync::Lazy;
     use tflite_support::{BaseOptions, DetectionOptions, DetectionResult, ObjectDetector};
 
-    use super::CAT;
+    use super::{CAT, DETECT_CAT};
     use crate::logging::*;
     use crate::{
         foundation::geom::Rect,
@@ -175,7 +183,6 @@ mod imp {
         }
 
         fn set_property(&self, _id: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
-            info!(CAT, "Acquiring props lock");
             let mut props_guard = self.props_storage.lock().unwrap();
             match pspec.name() {
                 "model-location" => {
@@ -197,7 +204,6 @@ mod imp {
         }
 
         fn property(&self, _id: usize, pspec: &glib::ParamSpec) -> glib::Value {
-            info!(CAT, "Acquiring props lock");
             let props_guard = self.props_storage.lock().unwrap();
             match pspec.name() {
                 "model-location" => props_guard.model_location.to_value(),
@@ -257,7 +263,6 @@ mod imp {
             info!(CAT, obj: instance, "Setting caps to {:?}", caps);
 
             let video_info = gst_video::VideoInfo::from_caps(caps).unwrap();
-            info!(CAT, "Acquiring video info lock");
             let mut info_guard = self.video_info.lock().unwrap();
             info_guard.replace(video_info);
 
@@ -291,15 +296,24 @@ mod imp {
 
             // Run object detection on the frame
             let res = self.perform_detection(buffer)?;
-
+            if res.size() != 0 {
+                debug!(
+                    DETECT_CAT,
+                    "Detected {} object{}",
+                    res.size(),
+                    if res.size() == 1 { "" } else { "s" }
+                );
+            }
             for d in res.detections() {
-                let (score, label) = {
+                let (label, score) = {
                     let first_category = d
                         .categories()
                         .next()
                         .expect("A detection result should have at least one category");
-                    (first_category.score(), first_category.label_as_string())
+                    (first_category.label_as_string(), first_category.score())
                 };
+
+                debug!(DETECT_CAT, "label={:<8} score={}", label, score);
 
                 let (w, h) = self.get_dimensions().unwrap();
                 let object_bounds = d.bounding_box();
@@ -338,9 +352,8 @@ mod imp {
 
             debug!(
                 CAT,
-                "Finished inference frame {:?}, detections={} duration={}",
+                "Finished inference frame {:?}, duration={}",
                 dts,
-                res.size(),
                 start_ts.elapsed().as_secs_f32(),
             );
 
