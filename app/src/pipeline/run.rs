@@ -44,15 +44,17 @@ pub fn run_main_loop((main_loop, pipeline): (glib::MainLoop, gst::Pipeline)) -> 
                 main_loop.quit();
             }
             MessageView::Error(err) => {
+                // TODO(shyndman): Figure out how to judge the severity of the error
                 error!(
                     CAT,
-                    "Error from {:?}: {} ({:?})",
+                    "Error from {:?}: {:?} {} ({:?})",
                     err.src().map(|s| s.path_string()),
+                    err.error().domain(),
                     err.error(),
                     err.debug()
                 );
+
                 let _ = pipeline.set_state(gst::State::Ready);
-                main_loop.quit();
             }
             MessageView::StateChanged(event_details) => {
                 trace_graph_state_change(&pipeline, &event_details);
@@ -69,8 +71,6 @@ pub fn run_main_loop((main_loop, pipeline): (glib::MainLoop, gst::Pipeline)) -> 
 
     bus.add_signal_watch();
     main_loop.run();
-
-    bus.remove_watch().ok();
     pipeline.set_state(gst::State::Null)?;
 
     Ok(())
