@@ -165,22 +165,26 @@ run-app-test:
   set-env('GST_PLUGIN_PATH', '/usr/local/lib/x86_64-linux-gnu/gstreamer-1.0:/usr/lib/x86_64-linux-gnu/gstreamer-1.0/:/home/shyndman/dev/gst-plugins-rs/target/debug/')
 
   if $GST_DEBUG:
-    set-env('GST_DEBUG', 'AA_*:5,6,GST_REGISTRY:0,GST_PLUGIN_LOADING=0,${GST_DEBUG}')
+    set-env('GST_DEBUG', 'AA_*:5,6,GST_REGISTRY:0,GST_PLUGIN_LOADING:0,GST_REFCOUNTING:0,GST_TYPEFIND:0,${GST_DEBUG}')
   else:
     set-env('GST_DEBUG', "AA_*:5,6")
   end
 
   build_dir = "target/${TARGET}/${build_profile_subdir}"
-  temp_dir_path = "${build_dir}/videos"
-  mkdir -p ${temp_dir_path}
+  video_storage_path = "${build_dir}/videos"
+  mkdir -p ${video_storage_path}
 
   graph_snapshot_dir = "${build_dir}/graph-snapshots"
   mkdir -p ${graph_snapshot_dir}
-  set-env('GST_DEBUG_DUMP_DOT_DIR', $dot_dir)
+  set-env('GST_DEBUG_DUMP_DOT_DIR', $graph_snapshot_dir)
 
-  cargo -vvv run --bin=aa-app --profile=${PROFILE} -- \
+  rm -f ${graph_snapshot_dir}/*.dot
+  rm -f ${video_storage_path}/*.mp4
+
+  cargo run --bin=aa-app --profile=${PROFILE} -- \
       --model-path sample_data/detection-model.tflite \
-      --temp-dir-path ${temp_dir_path}
+      --debug-source-video-path=sample_data/inference-source-1.mp4 \
+      --temp-dir-path ${video_storage_path}
 
 clean:
   cargo clean
