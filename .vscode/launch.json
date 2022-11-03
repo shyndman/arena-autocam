@@ -1,0 +1,90 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'arena_autocam'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--lib",
+          "--package=aa-app"
+        ],
+        "filter": {
+          "name": "arena_autocam",
+          "kind": "lib"
+        },
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'aa-app'",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=aa-app",
+          "--package=aa-app"
+        ],
+        "filter": {
+          "name": "aa-app",
+          "kind": "bin"
+        }
+      },
+      "env": {
+        "LD_LIBRARY_PATH": "${env:LD_LIBRARY_PATH}:${workspaceFolder}/target/x86_64-unknown-linux-gnu/debug/build/tflite-support-c48344cb83e044e2/out/lib"
+      },
+      "args": [
+        "--model-path=sample_data/detection-model.tflite",
+        "--temp-dir-path=target/x86_64-unknown-linux-gnu/debug/videos/",
+        "--debug-source-video-path=sample_data/inference-source-1.mp4"
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in executable 'aa-app'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--bin=aa-app",
+          "--package=aa-app"
+        ],
+        "filter": {
+          "name": "aa-app",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'tflite_support'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--lib",
+          "--package=tflite-support"
+        ],
+        "filter": {
+          "name": "tflite_support",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
