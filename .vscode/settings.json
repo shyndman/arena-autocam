@@ -2,6 +2,10 @@
   "[rust]": {
     "editor.tabSize": 4
   },
+  "[toml]": {
+    "editor.rulers": [90]
+  },
+  "rust-analyzer.cargo.target": "x86_64-unknown-linux-gnu",
   "rust-analyzer.cargo.buildScripts.enable": true,
   "rust-analyzer.procMacro.enable": true,
   "files.watcherExclude": {
@@ -27,11 +31,12 @@
   "dart.analysisExcludedFolders": [
     "target"
   ],
+  "evenBetterToml.formatter.columnWidth": 90,
+  "evenBetterToml.formatter.compactArrays": true,
   "yaml.schemas": {
     "https://raw.githubusercontent.com/AkihiroSuda/compose-go/8cf4f0bff89ac1e37dbe5a3bca2373ba4051871e/schema/compose-spec.json": [
       "docker-compose.*.yaml",
       "docker-compose.yaml"
     ],
   },
-  "rust-analyzer.cargo.target": "x86_64-unknown-linux-gnu",
 }
