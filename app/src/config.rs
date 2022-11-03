@@ -9,9 +9,20 @@ use figment::{
     Figment,
 };
 use gst::prelude::TimeFormatConstructor;
+use once_cell::sync::Lazy;
 use serde::Deserialize;
 use serde_derive::{Deserialize, Serialize};
 use strfmt::strfmt;
+
+use crate::logging::*;
+
+pub(self) static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
+    gst::DebugCategory::new(
+        "AA_CONFIG",
+        gst::DebugColorFlags::FG_YELLOW,
+        Some("Auto-Arena Configuration"),
+    )
+});
 
 // The application's configuration.
 #[derive(Args, Debug, Deserialize, Serialize)]
@@ -92,8 +103,8 @@ pub struct InferenceConfig {
     #[arg(long, default_value_t = 0.2)]
     pub score_threshold: f32,
 
-    #[arg(long, default_value_t = 5)]
-    pub rate_per_second: u8,
+    #[arg(long, default_value_t = 5.0)]
+    pub rate_per_second: f32,
 
     #[arg(long, default_value_t = true)]
     pub tune_inference_rate: bool,
@@ -101,7 +112,7 @@ pub struct InferenceConfig {
 
 impl InferenceConfig {
     pub fn inference_frame_duration(&self) -> Duration {
-        Duration::seconds(1) / self.rate_per_second as i32
+        Duration::milliseconds((1000.0 / self.rate_per_second) as i64)
     }
 }
 
@@ -189,6 +200,8 @@ impl Config {
         user_config_path: Option<PathBuf>,
         cli_and_defaults_config: Config,
     ) -> Result<Self> {
+        info!(CAT, "Loading configuration");
+
         let mut cfg = Figment::from(Serialized::defaults(cli_and_defaults_config));
         if let Some(path) = user_config_path {
             cfg = cfg.merge(Toml::file(path));

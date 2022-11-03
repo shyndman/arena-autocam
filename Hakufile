@@ -160,7 +160,7 @@ run-aainferpass-pipeline: setup-gst-env
       fpsdisplaysink
 
 
-run-app-test:
+run-app-test +extra-args:
   # set-env('LIBCAMERA_LOG_LEVELS', '*:DEBUG')
   set-env('GST_PLUGIN_PATH', '/usr/local/lib/x86_64-linux-gnu/gstreamer-1.0:/usr/lib/x86_64-linux-gnu/gstreamer-1.0/:/home/shyndman/dev/gst-plugins-rs/target/debug/')
 
@@ -181,10 +181,17 @@ run-app-test:
   rm -f ${graph_snapshot_dir}/*.dot
   rm -f ${video_storage_path}/*.mp4
 
+  infer-rate = "--rate-per-second 5.0"
+  if contains($extra-args, "--rate-per-second"):
+    infer-rate = ""
+  end
+
   cargo run --bin=aa-app --profile=${PROFILE} -- \
       --model-path sample_data/detection-model.tflite \
       --debug-source-video-path=sample_data/inference-source-1.mp4 \
-      --temp-dir-path ${video_storage_path}
+      --temp-dir-path ${video_storage_path} \
+      ${infer-rate} \
+      ${extra-args}
 
 clean:
   cargo clean

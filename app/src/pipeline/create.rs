@@ -201,10 +201,9 @@ fn create_infer_stream_pipeline(
         .property(
             "caps",
             gst_video::VideoCapsBuilder::new()
-                .framerate(gst::Fraction::new(
-                    config.inference.rate_per_second as i32,
-                    1,
-                ))
+                .framerate(
+                    gst::Fraction::approximate_f32(config.inference.rate_per_second).unwrap(),
+                )
                 .build(),
         )
         .build()?;
