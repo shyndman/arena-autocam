@@ -1,8 +1,8 @@
-pub(self) mod camera;
 mod configure;
 mod create;
 pub(self) mod names;
 mod run;
+pub(self) mod source;
 
 pub use configure::*;
 pub use create::*;

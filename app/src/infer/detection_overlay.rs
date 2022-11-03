@@ -11,12 +11,12 @@ use gst::ClockTime;
 use crate::{
     infer::CAT,
     logging::*,
-    message::{AppMsgType, Category, DetectionFrameDone, ObjectDetection},
+    message::{AAMessage, DetectionDetails},
 };
 
 struct State {
     info: Option<gst_video::VideoInfo>,
-    detections: VecDeque<ObjectDetection>,
+    detections: VecDeque<DetectionDetails>,
 }
 
 const DETECTION_LIFETIME_MS: u64 = 2000;
@@ -34,9 +34,9 @@ pub fn build_detection_overlay(name: &str, bus: &gst::Bus) -> Result<gst::Elemen
     let state_clone = state.clone();
 
     bus.connect("message", true, move |args| {
-        use gst::MessageView;
-
         trace!(CAT, "Received message signal");
+
+        use gst::MessageView;
         let _bus = args[0].get::<gst::Bus>().unwrap();
         let msg = args[1].get::<gst::Message>().unwrap();
 
@@ -54,43 +54,17 @@ pub fn build_detection_overlay(name: &str, bus: &gst::Bus) -> Result<gst::Elemen
             return None;
         };
 
-        let app_msg_type = if let Ok(msg_type) =
-            AppMsgType::try_from(app_msg_structure.name().to_string())
-        {
-            trace!(CAT, "Message has valid AppMsgType, {}", msg_type);
-            msg_type
-        } else {
-            warning!(
-                CAT,
-                "Failed to read AppMsgType, {}",
-                app_msg_structure.name()
-            );
-            return None;
-        };
+        let app_msg =
+            if let Ok(msg) = AAMessage::from_gst_message_structure(app_msg_structure) {
+                msg
+            } else {
+                return None;
+            };
 
-        if app_msg_type.category != Category::Detection {
-            trace!(
-                CAT,
-                "Message not in the detection category, {}",
-                app_msg_type.category
-            );
-            return None;
-        }
-
-        trace!(CAT, "Parsing message with name, {}", app_msg_type.name);
-        match app_msg_type.name.as_str() {
-            "object-detection" => {
-                let msg: ObjectDetection = app_msg_structure.try_into().unwrap();
-                trace!(CAT, "Parsed ObjectDetection");
-
-                let guard = &mut state_clone.lock().unwrap();
-                let detections = &mut guard.detections;
-                detections.push_back(msg);
-            }
-            "detection-frame-done" => {
-                let _msg: DetectionFrameDone = app_msg_structure.try_into().unwrap();
-            }
-            _ => {}
+        if let AAMessage::InferObjectDetection(details) = app_msg {
+            let guard = &mut state_clone.lock().unwrap();
+            let detections = &mut guard.detections;
+            detections.push_back(details);
         }
 
         None
@@ -101,9 +75,9 @@ pub fn build_detection_overlay(name: &str, bus: &gst::Bus) -> Result<gst::Elemen
 
     let state_clone = state.clone();
     overlay.connect("draw", true, move |args| {
-        let ts = args[2].get::<gst::ClockTime>().unwrap();
         let _overlay = args[0].get::<gst::Element>().unwrap();
         let ctx = args[1].get::<cairo::Context>().unwrap();
+        let ts = args[2].get::<gst::ClockTime>().unwrap();
         let _dur = args[3].get::<gst::ClockTime>().unwrap();
         let state_guard = &mut state_clone.lock().unwrap();
 
@@ -135,7 +109,7 @@ pub fn build_detection_overlay(name: &str, bus: &gst::Bus) -> Result<gst::Elemen
 
         for detection in detections.iter() {
             let life_left = 1.0 - life_elapsed(ts, detection.dts);
-            let rect = detection.bounds;
+            let rect = &detection.bounds;
 
             ctx.set_source_rgba(1.0, 0.0, 0.0, (0.0..1.0).lerp(life_left));
             ctx.set_line_width(1.5);
@@ -183,8 +157,4 @@ impl Tweenable for Range<f64> {
     fn lerp(&self, t: f64) -> f64 {
         (self.end - self.start) * t + self.start
     }
-
-    // fn rem(self, rhs: f64) -> Self::Output {
-    //     self.lerp(rhs)
-    // }
 }

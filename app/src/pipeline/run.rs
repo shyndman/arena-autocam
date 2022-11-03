@@ -13,6 +13,7 @@ pub fn run_main_loop((main_loop, pipeline): (glib::MainLoop, gst::Pipeline)) -> 
     let bus = pipeline
         .bus()
         .expect("Pipeline without bus. Shouldn't happen!");
+
     let pipeline_weak = pipeline.downgrade();
     bus.connect_message(None, move |_, msg| {
         trace!(RUN_CAT, "Received message in main loop, {:?}", msg.type_());
@@ -25,7 +26,7 @@ pub fn run_main_loop((main_loop, pipeline): (glib::MainLoop, gst::Pipeline)) -> 
             None => {
                 main_loop.quit();
                 return;
-            } //return glib::Continue(true),
+            }
         };
 
         match msg.view() {

@@ -1,2 +1,2 @@
 #[allow(unused_imports)]
-pub use gst::{trace, debug, info, warning, error};
+pub use gst::{debug, error, info, trace, warning};

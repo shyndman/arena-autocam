@@ -15,7 +15,6 @@ mod imp {
     use std::sync::Mutex;
 
     use anyhow::Result;
-    use cairo::Rectangle;
     use glib::{ParamSpecBuilderExt, ToValue};
     use gst::{debug, glib, info, subclass::prelude::*, FlowError, Fraction};
     use gst_base::subclass::prelude::*;
@@ -25,8 +24,9 @@ mod imp {
 
     use super::CAT;
     use crate::{
+        foundation::geom::Rect,
         infer::tf_buffer_adapter::TensorflowBufferAdapter,
-        message::{DetectionFrameDone, DetectionFrameStart, DetectionMsg, ObjectDetection},
+        message::{AAMessage, DetectionDetails},
     };
 
     #[derive(Default)]
@@ -173,7 +173,8 @@ mod imp {
                     props_guard.model_invalidated = true
                 }
                 "max-results" => {
-                    props_guard.max_results = value.get::<u32>().expect("type checked upstream");
+                    props_guard.max_results =
+                        value.get::<u32>().expect("type checked upstream");
                     props_guard.model_invalidated = true
                 }
                 "score-threshold" => {
@@ -267,10 +268,10 @@ mod imp {
             // Notify that we're beginning the inference frame
             let dts = buffer.dts_or_pts().unwrap();
             self.post_to_bus(
-                gst::message::Application::builder(
-                    DetectionFrameStart { dts }.to_structure(),
-                )
-                .build(),
+                AAMessage::InferFrameStart { dts: dts }
+                    .to_gst_message()
+                    // TODO(shyndman): We really need to report the error text
+                    .map_err(|_| gst::FlowError::Error)?,
             )
             .map_err(|_| FlowError::Error)?;
 
@@ -288,7 +289,7 @@ mod imp {
 
                 let (w, h) = self.get_dimensions().unwrap();
                 let object_bounds = d.bounding_box();
-                let fractional_bounds = Rectangle::new(
+                let fractional_bounds = Rect::new(
                     object_bounds.x as f64 / w,
                     object_bounds.y as f64 / h,
                     object_bounds.width as f64 / w,
@@ -296,30 +297,27 @@ mod imp {
                 );
 
                 self.post_to_bus(
-                    gst::message::Application::builder(
-                        ObjectDetection {
-                            dts,
-                            label: label.into(),
-                            score,
-                            bounds: fractional_bounds,
-                        }
-                        .to_structure(),
-                    )
-                    .build(),
+                    AAMessage::InferObjectDetection(DetectionDetails {
+                        dts,
+                        label: label.into(),
+                        score,
+                        bounds: fractional_bounds,
+                    })
+                    .to_gst_message()
+                    .map_err(|_| gst::FlowError::Error)?,
                 )
                 .map_err(|_| FlowError::Error)?;
             }
 
             // Signal that the frame is now complete
             self.post_to_bus(
-                gst::message::Application::builder(
-                    DetectionFrameDone {
-                        dts,
-                        detection_count: res.size() as i32,
-                    }
-                    .to_structure(),
-                )
-                .build(),
+                AAMessage::InferFrameDone {
+                    dts: dts,
+                    detection_count: res.size() as i32,
+                }
+                .to_gst_message()
+                // TODO(shyndman): We really need to report the error text
+                .map_err(|_| gst::FlowError::Error)?,
             )
             .map_err(|_| FlowError::Error)?;
 

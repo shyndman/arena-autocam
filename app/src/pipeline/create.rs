@@ -1,15 +1,16 @@
 use anyhow::{Error, Result};
 use gst::prelude::*;
 
-use super::camera::{setup_camera_src, CameraSrcInfo};
+use super::source::{create_media_sources, SourcePads};
 use super::{names, PIPE_CAT};
+use crate::config::Config;
 use crate::{
+    foundation::gst::find_sink_pad,
     infer::{build_detection_overlay, DetectionSink},
     logging::*,
-    util::find_sink_pad,
 };
 
-pub fn create_pipeline() -> Result<(glib::MainLoop, gst::Pipeline)> {
+pub fn create_pipeline(config: &Config) -> Result<(glib::MainLoop, gst::Pipeline)> {
     gst::init()?;
     gst::update_registry()?;
 
@@ -24,10 +25,10 @@ pub fn create_pipeline() -> Result<(glib::MainLoop, gst::Pipeline)> {
         .bus()
         .expect("Pipeline without bus. Shouldn't happen!");
 
-    let CameraSrcInfo {
+    let SourcePads {
         display_stream_src_pad,
         inference_stream_src_pad,
-    } = setup_camera_src(&pipeline)?;
+    } = create_media_sources(config, &pipeline)?;
     create_display_stream_pipeline(&pipeline, &bus, &display_stream_src_pad)?;
     create_infer_stream_pipeline(&pipeline, &bus, &inference_stream_src_pad)?;
 

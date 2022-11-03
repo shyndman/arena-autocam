@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
-use anyhow::{Error, Result};
-use cairo::Rectangle;
+use anyhow::Result;
+
 pub fn to_canonicalized_path_string(path: &PathBuf) -> Result<String> {
     path.canonicalize()?
         .to_str()

@@ -5,7 +5,7 @@ use chrono::Local;
 use gst::prelude::*;
 
 use super::{names, CONFIGURE_CAT};
-use crate::{config::Config, logging::*, util::to_canonicalized_path_string};
+use crate::{config::Config, foundation::path::to_canonicalized_path_string, logging::*};
 
 pub fn configure_pipeline(
     config: &Config,
