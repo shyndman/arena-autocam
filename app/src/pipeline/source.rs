@@ -9,8 +9,8 @@ use gst_video::VideoCapsBuilder;
 
 use crate::config::Config;
 use crate::foundation::{gst::find_src_pad, path::to_canonicalized_path_string};
-use crate::pipeline::CREATE_CAT;
-use crate::{foundation::debug, logging::*};
+use crate::logging::*;
+use crate::pipeline::CREATE_CAT as CAT;
 
 pub(super) struct SourcePads {
     pub display_stream_src_pad: gst::Pad,
@@ -37,7 +37,7 @@ fn setup_camera_sources(config: &Config, pipeline: &gst::Pipeline) -> Result<Sou
 }
 
 fn build_libcamera_streams(pipeline: &gst::Pipeline) -> Result<SourcePads> {
-    info!(CREATE_CAT, "Creating libcamera source");
+    info!(CAT, "Creating libcamera source");
 
     let camera = gst::ElementFactory::make("libcamerasrc").build()?;
     pipeline.add(&camera)?;
@@ -71,7 +71,7 @@ fn synthesize_libcamera_streams(
     config: &Config,
     pipeline: &gst::Pipeline,
 ) -> Result<SourcePads> {
-    info!(CREATE_CAT, "Creating synthetic libcamera source");
+    info!(CAT, "Creating synthetic libcamera source");
 
     let raw_jpeg_caps = Caps::builder("image/jpeg")
         .field("width", config.source.record_stream_width)
@@ -149,10 +149,7 @@ fn setup_debug_video_sources(
     pipeline: &gst::Pipeline,
 ) -> Result<SourcePads> {
     let video_uri = format!("pushfile://{}", to_canonicalized_path_string(&video_path)?);
-    info!(
-        CREATE_CAT,
-        "Creating debug video source, location={}", video_uri
-    );
+    info!(CAT, "Creating debug video source, location={}", video_uri);
 
     let decodebin = gst::ElementFactory::make("uridecodebin")
         .name("debug-video.decode")
@@ -184,8 +181,6 @@ fn setup_debug_video_sources(
 
     pipeline.add_many(&[&decodebin, &convert1, &scale, &rate, &caps, &splitter])?;
     gst::Element::link_many(&[&convert1, &scale, &rate, &caps, &splitter])?;
-
-    debug::trace_graph(pipeline, "pipeline".into(), "snapshot".into());
 
     // Build pads
     let pad_template = splitter
