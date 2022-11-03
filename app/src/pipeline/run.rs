@@ -1,22 +1,29 @@
 use anyhow::Result;
 use gst::prelude::*;
 
-use super::RUN_CAT;
-use crate::{logging::*, tracing::trace_graph_state_change};
+use super::RUN_CAT as CAT;
+use crate::{foundation::debug::trace_graph_state_change, logging::*};
 
 pub fn run_main_loop((main_loop, pipeline): (glib::MainLoop, gst::Pipeline)) -> Result<()> {
-    info!(RUN_CAT, obj: &pipeline, "Starting main loop");
+    info!(CAT, obj: &pipeline, "Starting main loop");
 
-    pipeline.set_state(gst::State::Playing)?;
-
-    let main_loop_clone = main_loop.clone();
     let bus = pipeline
         .bus()
         .expect("Pipeline without bus. Shouldn't happen!");
 
+    let pipeline_element = pipeline.dynamic_cast_ref::<gst::Element>().unwrap();
+    pipeline_element.set_state(gst::State::Playing)?;
+
+    let main_loop_clone = main_loop.clone();
+
+    debug!(CAT, "Registering message bus observer");
     let pipeline_weak = pipeline.downgrade();
     bus.connect_message(None, move |_, msg| {
-        trace!(RUN_CAT, "Received message in main loop, {:?}", msg.type_());
+        debug!(
+            CAT,
+            "Received message in main loop, {}",
+            format!("{:?}", msg.type_()).to_lowercase()
+        );
 
         use gst::MessageView;
         let main_loop = &main_loop_clone;
@@ -29,7 +36,8 @@ pub fn run_main_loop((main_loop, pipeline): (glib::MainLoop, gst::Pipeline)) -> 
             }
         };
 
-        match msg.view() {
+        let view = msg.view();
+        match view {
             MessageView::Eos(..) => {
                 // end-of-stream
                 let _ = pipeline.set_state(gst::State::Ready);
@@ -37,7 +45,7 @@ pub fn run_main_loop((main_loop, pipeline): (glib::MainLoop, gst::Pipeline)) -> 
             }
             MessageView::Error(err) => {
                 error!(
-                    RUN_CAT,
+                    CAT,
                     "Error from {:?}: {} ({:?})",
                     err.src().map(|s| s.path_string()),
                     err.error(),
@@ -49,18 +57,20 @@ pub fn run_main_loop((main_loop, pipeline): (glib::MainLoop, gst::Pipeline)) -> 
             MessageView::StateChanged(event_details) => {
                 trace_graph_state_change(&pipeline, &event_details);
             }
-            MessageView::Latency(latency) => {
-                info!(RUN_CAT, "{:?}", latency);
+            MessageView::Application(_) => {}
+            _ => {
+                let msg_ref = msg.as_ref() as &gst::MessageRef;
+                if let Some(structure) = msg_ref.structure() {
+                    log!(CAT, "Message contents {:#?}", structure);
+                }
             }
-            _ => (),
         }
-        // glib::Continue(true)
     });
 
     bus.add_signal_watch();
     main_loop.run();
 
-    bus.remove_watch()?;
+    bus.remove_watch().ok();
     pipeline.set_state(gst::State::Null)?;
 
     Ok(())

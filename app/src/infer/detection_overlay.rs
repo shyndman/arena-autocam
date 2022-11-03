@@ -7,9 +7,18 @@ use std::{
 use anyhow::Error;
 use glib::ObjectExt;
 use gst::ClockTime;
+use once_cell::sync::Lazy;
+
+static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
+    gst::DebugCategory::new(
+        "AA_INFER_OVERLAY",
+        gst::DebugColorFlags::empty(),
+        Some("Auto-Arena Inference"),
+    )
+});
 
 use crate::{
-    infer::CAT,
+    config::Config,
     logging::*,
     message::{AAMessage, DetectionDetails},
 };
@@ -19,9 +28,16 @@ struct State {
     detections: VecDeque<DetectionDetails>,
 }
 
-const DETECTION_LIFETIME_MS: u64 = 2000;
+pub fn build_detection_overlay(
+    name: &str,
+    bus: &gst::Bus,
+    config: &Config,
+) -> Result<gst::Element, Error> {
+    let detection_lifetime_ms: f64 = config
+        .inference
+        .inference_frame_duration()
+        .num_milliseconds() as f64;
 
-pub fn build_detection_overlay(name: &str, bus: &gst::Bus) -> Result<gst::Element, Error> {
     let overlay = gst::ElementFactory::make("cairooverlay")
         .name(name)
         .build()?;
@@ -34,7 +50,7 @@ pub fn build_detection_overlay(name: &str, bus: &gst::Bus) -> Result<gst::Elemen
     let state_clone = state.clone();
 
     bus.connect("message", true, move |args| {
-        trace!(CAT, "Received message signal");
+        log!(CAT, "Received message signal");
 
         use gst::MessageView;
         let _bus = args[0].get::<gst::Bus>().unwrap();
@@ -70,9 +86,6 @@ pub fn build_detection_overlay(name: &str, bus: &gst::Bus) -> Result<gst::Elemen
         None
     });
 
-    // bus.add_watch(move |_bus, msg| {
-    // })?;
-
     let state_clone = state.clone();
     overlay.connect("draw", true, move |args| {
         let _overlay = args[0].get::<gst::Element>().unwrap();
@@ -80,6 +93,8 @@ pub fn build_detection_overlay(name: &str, bus: &gst::Bus) -> Result<gst::Elemen
         let ts = args[2].get::<gst::ClockTime>().unwrap();
         let _dur = args[3].get::<gst::ClockTime>().unwrap();
         let state_guard = &mut state_clone.lock().unwrap();
+
+        debug!(CAT, "Starting overlay frame {:?}", ts);
 
         let (w, h) = {
             let info = state_guard.info.as_ref().unwrap();
@@ -91,24 +106,38 @@ pub fn build_detection_overlay(name: &str, bus: &gst::Bus) -> Result<gst::Elemen
             return None;
         }
 
-        fn life_elapsed(frame_ts: ClockTime, detect_ts: ClockTime) -> f64 {
-            (frame_ts - detect_ts).mseconds() as f64 / DETECTION_LIFETIME_MS as f64
-        }
+        let life_elapsed = |frame_ts: ClockTime, detect_ts: ClockTime| -> f64 {
+            let f_ts = frame_ts.mseconds() as f64;
+            let d_ts = detect_ts.mseconds() as f64;
+            (f_ts - d_ts) / detection_lifetime_ms
+        };
 
         // Expire old detections
+        let mut delete_count = 0u16;
         while !detections.is_empty() {
-            let life_elapsed_fraction = life_elapsed(ts, detections.front().unwrap().dts);
+            let life_elapsed_fraction = life_elapsed(ts, detections.front().unwrap().pts);
             if life_elapsed_fraction >= 1.0 {
+                debug!(CAT, "life: {}", life_elapsed_fraction);
+                delete_count += 1;
                 detections.pop_front();
             } else {
                 break;
             }
         }
+        log!(CAT, "Removed {} detections", delete_count);
 
+        if detections.is_empty() {
+            return None;
+        }
         ctx.save().expect("Could not save Cairo state");
 
+        log!(CAT, "Drawing {} detections", detections.len());
         for detection in detections.iter() {
-            let life_left = 1.0 - life_elapsed(ts, detection.dts);
+            let life_left = 1.0 - life_elapsed(ts, detection.pts);
+            if life_left > 1.0 {
+                continue;
+            }
+
             let rect = &detection.bounds;
 
             ctx.set_source_rgba(1.0, 0.0, 0.0, (0.0..1.0).lerp(life_left));

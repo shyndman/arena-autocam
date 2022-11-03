@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::*;
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Duration, Local};
 use clap::Args;
 use figment::{
     providers::{Format, Serialized, Toml},
@@ -9,7 +9,7 @@ use figment::{
     Figment,
 };
 use gst::prelude::TimeFormatConstructor;
-use serde::Deserialize as Deserde;
+use serde::Deserialize;
 use serde_derive::{Deserialize, Serialize};
 use strfmt::strfmt;
 
@@ -17,7 +17,11 @@ use strfmt::strfmt;
 #[derive(Args, Debug, Deserialize, Serialize)]
 pub struct Config {
     #[command(flatten)]
+    pub source: SourceConfig,
+
+    #[command(flatten)]
     pub inference: InferenceConfig,
+
     #[command(flatten)]
     pub video_storage: VideoStorageConfig,
 }
@@ -31,6 +35,49 @@ impl Validate for Config {
 }
 
 #[derive(Args, Debug, Deserialize, Serialize)]
+pub struct SourceConfig {
+    /// The preferred width of the record stream (in pixels)
+    #[arg(long, default_value_t = 1280)]
+    pub record_stream_width: i32,
+
+    /// The preferred height of the record stream (in pixels)
+    #[arg(long, default_value_t = 720)]
+    pub record_stream_height: i32,
+
+    /// The width of the inference stream (in pixels). This should be the exact size the
+    /// TFLite model requires, to avoid unnecessary scaling transformations.
+    #[arg(long, default_value_t = 224)]
+    pub infer_stream_width: i32,
+
+    /// The height of the inference stream (in pixels). This should be the exact size the
+    /// TFLite model requires, to avoid unnecessary scaling transformations.
+    #[arg(long, default_value_t = 224)]
+    pub infer_stream_height: i32,
+
+    /// If provided, the pipeline will operate on a video at the provided path, rather
+    /// than the camera stream.
+    ///
+    /// This is primarily for debugging
+    #[arg(long, value_name = "FILE")]
+    pub debug_source_video_path: Option<String>,
+}
+
+impl Validate for SourceConfig {
+    fn validate(&self) -> Result<&Self> {
+        match self.debug_source_video_path {
+            Some(ref path) => {
+                if PathBuf::from(path).is_file() {
+                    Ok(self)
+                } else {
+                    Err(anyhow!("debug_source_model_path: file not found"))
+                }
+            }
+            _ => Ok(self),
+        }
+    }
+}
+
+#[derive(Args, Debug, Deserialize, Serialize)]
 pub struct InferenceConfig {
     /// The path to the Tensorflow Lite model
     #[serde(serialize_with = "RelativePathBuf::serialize_relative")]
@@ -38,18 +85,30 @@ pub struct InferenceConfig {
     pub model_path: RelativePathBuf,
 
     /// The maximum number of results returned by the model per inference run.
-    #[arg(long, default_value_t = 3)]
+    #[arg(long, default_value_t = 6)]
     pub max_results: u32,
 
     /// The score threshold under which a potential result is considered unimportant.
-    #[arg(long, default_value_t = 0.1)]
+    #[arg(long, default_value_t = 0.2)]
     pub score_threshold: f32,
+
+    #[arg(long, default_value_t = 5)]
+    pub rate_per_second: u8,
+
+    #[arg(long, default_value_t = true)]
+    pub tune_inference_rate: bool,
+}
+
+impl InferenceConfig {
+    pub fn inference_frame_duration(&self) -> Duration {
+        Duration::seconds(1) / self.rate_per_second as i32
+    }
 }
 
 impl Validate for InferenceConfig {
     fn validate(&self) -> Result<&Self> {
         if !self.model_path.relative().is_file() {
-            return Err(Error::msg(r"inference.model_path: file not found"));
+            return Err(anyhow!(r"inference.model_path: file not found"));
         }
         return Ok(self);
     }
@@ -147,11 +206,11 @@ trait Validate: Sized {
 }
 
 trait ValidatedFigment {
-    fn extract_validated<'a, T: Deserde<'a> + Validate>(&self) -> Result<T>;
+    fn extract_validated<'a, T: Deserialize<'a> + Validate>(&self) -> Result<T>;
 }
 
 impl ValidatedFigment for Figment {
-    fn extract_validated<'a, T: Deserde<'a> + Validate>(&self) -> Result<T> {
+    fn extract_validated<'a, T: Deserialize<'a> + Validate>(&self) -> Result<T> {
         let value: T = self.extract()?;
         if let Err(err) = (&value).validate() {
             Err(err)

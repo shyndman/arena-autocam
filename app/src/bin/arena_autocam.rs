@@ -21,15 +21,16 @@ pub struct Args {
 }
 
 fn main() -> Result<()> {
-    eprintln!("Starting Arena Autocam");
+    eprintln!("\nStarting Arena Autocam");
 
     let args = Args::parse();
     let config = Config::new(args.config_path, args.config)?;
 
     eprintln!("Configuration:\n");
     eprintln!("{}", indent(config.to_toml_string()?.as_str(), "   "));
+    eprintln!();
 
-    match create_pipeline()
+    match create_pipeline(&config)
         .and_then(|res| configure_pipeline(&config, res))
         .and_then(run_main_loop)
     {

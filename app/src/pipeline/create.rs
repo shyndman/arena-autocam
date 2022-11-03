@@ -1,8 +1,9 @@
 use anyhow::{Error, Result};
 use gst::prelude::*;
+use gst_app::prelude::BaseSinkExt;
 
 use super::source::{create_media_sources, SourcePads};
-use super::{names, PIPE_CAT};
+use super::{names, CREATE_CAT as CAT};
 use crate::config::Config;
 use crate::{
     foundation::gst::find_sink_pad,
@@ -14,7 +15,7 @@ pub fn create_pipeline(config: &Config) -> Result<(glib::MainLoop, gst::Pipeline
     gst::init()?;
     gst::update_registry()?;
 
-    info!(PIPE_CAT, "Creating Arena-Autocam pipeline");
+    info!(CAT, "Creating Arena-Autocam pipeline");
 
     // Build a main loop, which will allow us to send/receive bus messages asynchronous
     let main_loop = glib::MainLoop::new(None, false);
@@ -29,8 +30,8 @@ pub fn create_pipeline(config: &Config) -> Result<(glib::MainLoop, gst::Pipeline
         display_stream_src_pad,
         inference_stream_src_pad,
     } = create_media_sources(config, &pipeline)?;
-    create_display_stream_pipeline(&pipeline, &bus, &display_stream_src_pad)?;
-    create_infer_stream_pipeline(&pipeline, &bus, &inference_stream_src_pad)?;
+    create_display_stream_pipeline(&pipeline, &bus, &display_stream_src_pad, config)?;
+    create_infer_stream_pipeline(&pipeline, &bus, &inference_stream_src_pad, config)?;
 
     Ok((main_loop, pipeline))
 }
@@ -39,6 +40,7 @@ fn create_display_stream_pipeline(
     pipeline: &gst::Pipeline,
     bus: &gst::Bus,
     display_stream_src: &gst::Pad,
+    config: &Config,
 ) -> Result<(), Error> {
     // Splits the display input to the (optional) debug pipeline and the filesystem
     // pipeline.
@@ -58,6 +60,7 @@ fn create_display_stream_pipeline(
         display_splitter
             .request_pad(&splitter_src_tmpl, None, None)
             .unwrap(),
+        config,
     )?;
     create_display_stream_persistence_branch(
         pipeline,
@@ -106,6 +109,7 @@ fn create_display_stream_persistence_branch(
         .property("max-size-time", 10.minutes().nseconds())
         .property("muxer-factory", "matroskamux")
         .property("location", "video%05d.mp4")
+        .property("async-handling", true)
         .build()?;
 
     pipeline.add_many(&[
@@ -114,7 +118,6 @@ fn create_display_stream_persistence_branch(
         &caps,
         &h264parse,
         &chunk_file_writer,
-        // &fakesink,
     ])?;
     src_pad.link(&find_sink_pad(&encode_queue)?)?;
     gst::Element::link_many(&[
@@ -123,7 +126,6 @@ fn create_display_stream_persistence_branch(
         &caps,
         &h264parse,
         &chunk_file_writer,
-        // &fakesink,
     ])?;
 
     Ok(())
@@ -134,6 +136,7 @@ fn create_display_stream_debug_branch(
     pipeline: &gst::Pipeline,
     bus: &gst::Bus,
     src_pad: gst::Pad,
+    config: &Config,
 ) -> Result<(), Error> {
     let queue = gst::ElementFactory::make("queue")
         .name("display.debug.queue")
@@ -141,32 +144,47 @@ fn create_display_stream_debug_branch(
         .property("max-size-bytes", 0u32) // disable
         .property("max-size-buffers", 0u32) // disable
         .build()?;
+
     let overlay_convert1 = gst::ElementFactory::make("videoconvert")
         .name("display.debug.overlay_convert_in")
         .build()?;
-    let overlay_display = build_detection_overlay("display.debug.overlay", bus)?;
+    let overlay_display = build_detection_overlay("display.debug.overlay", bus, config)?;
     let overlay_convert2 = gst::ElementFactory::make("videoconvert")
         .name("display.debug.overlay_convert_out")
         .build()?;
     let sink_display = gst::ElementFactory::make("autovideosink")
         .name("display.debug.autovideosink")
         .build()?;
-    pipeline.add_many(&[
-        &queue,
-        &overlay_convert1,
-        &overlay_display,
-        &overlay_convert2,
-        &sink_display,
-    ])?;
 
-    src_pad.link(&find_sink_pad(&queue)?)?;
-    gst::Element::link_many(&[
+    let elements = &[
         &queue,
         &overlay_convert1,
         &overlay_display,
         &overlay_convert2,
         &sink_display,
-    ])?;
+    ];
+    pipeline.add_many(elements)?;
+    src_pad.link(&find_sink_pad(&queue)?)?;
+    gst::Element::link_many(elements)?;
+
+    let duration = config.inference.inference_frame_duration();
+    sink_display.connect("element-added", true, move |args| {
+        let (sink, child) = if let [sink, child, ..] = args {
+            (
+                sink.get::<gst::Element>().unwrap(),
+                child.get::<gst::Element>().unwrap(),
+            )
+        } else {
+            return None;
+        };
+
+        debug!(CAT, obj: &sink, "Child added, {:?}", child);
+        if let Ok(sink) = child.dynamic_cast::<gst_base::BaseSink>() {
+            sink.set_ts_offset(duration.num_nanoseconds().unwrap());
+        }
+
+        None
+    });
 
     Ok(())
 }
@@ -175,21 +193,35 @@ fn create_infer_stream_pipeline(
     pipeline: &gst::Pipeline,
     bus: &gst::Bus,
     infer_src_pad: &gst::Pad,
+    config: &Config,
 ) -> Result<(), Error> {
-    let infer_leaky_queue = gst::ElementFactory::make("queue")
-        .name("infer.leaky-queue")
-        .property_from_str("leaky", "downstream")
-        .property("max-size-buffers", 1u32)
+    let infer_rate = gst::ElementFactory::make("videorate").build()?;
+
+    let infer_framerate_caps = gst::ElementFactory::make("capsfilter")
+        .property(
+            "caps",
+            gst_video::VideoCapsBuilder::new()
+                .framerate(gst::Fraction::new(
+                    config.inference.rate_per_second as i32,
+                    1,
+                ))
+                .build(),
+        )
         .build()?;
-
-    let infer_detection_sink = DetectionSink::new(Some(names::DETECTION_SINK));
+    let infer_detection_sink = DetectionSink::new(Some(names::DETECTION_SINK))
+        .dynamic_cast::<gst::Element>()
+        .unwrap();
     infer_detection_sink.set_property("bus", &bus);
+    let elements = &[
+        &infer_rate,
+        &infer_framerate_caps,
+        // &infer_queue,
+        &infer_detection_sink,
+    ];
+    pipeline.add_many(elements)?;
 
-    pipeline.add(&infer_leaky_queue)?;
-    pipeline.add(&infer_detection_sink)?;
-
-    infer_src_pad.link(&find_sink_pad(&infer_leaky_queue)?)?;
-    infer_leaky_queue.link(&infer_detection_sink)?;
+    infer_src_pad.link(&find_sink_pad(&infer_rate)?)?;
+    gst::Element::link_many(elements)?;
 
     Ok(())
 }

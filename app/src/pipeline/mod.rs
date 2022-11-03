@@ -17,11 +17,11 @@ pub(self) static CONFIGURE_CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
     )
 });
 
-pub(self) static PIPE_CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
+pub(self) static CREATE_CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
     gst::DebugCategory::new(
-        "AA_PIPE",
+        "AA_CREATE",
         gst::DebugColorFlags::empty(),
-        Some("Auto-Arena Pipeline"),
+        Some("Auto-Arena Creation"),
     )
 });
 

@@ -1,4 +1,12 @@
-use super::CAT;
+use once_cell::sync::Lazy;
+
+pub(self) static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
+    gst::DebugCategory::new(
+        "AA_INFER_SINK",
+        gst::DebugColorFlags::FG_YELLOW,
+        Some("Auto-Arena Inference"),
+    )
+});
 
 glib::wrapper! {
     pub struct DetectionSink(ObjectSubclass<imp::DetectionSink>) @extends gst_video::VideoSink, gst_base::BaseSink, gst::Element, gst::Object;
@@ -7,22 +15,23 @@ glib::wrapper! {
 /// API visible to consumers
 impl DetectionSink {
     pub fn new(name: Option<&str>) -> Self {
-        glib::Object::new(&[("name", &name)])
+        glib::Object::new(&[("name", &name), ("qos", &true)])
     }
 }
 
 mod imp {
-    use std::sync::Mutex;
+    use std::{sync::Mutex, time::Instant};
 
     use anyhow::Result;
     use glib::{ParamSpecBuilderExt, ToValue};
-    use gst::{debug, glib, info, subclass::prelude::*, FlowError, Fraction};
+    use gst::{glib, subclass::prelude::*, FlowError, Fraction};
     use gst_base::subclass::prelude::*;
     use gst_video::{subclass::prelude::*, VideoCapsBuilder, VideoFormat, VideoInfo};
     use once_cell::sync::Lazy;
     use tflite_support::{BaseOptions, DetectionOptions, DetectionResult, ObjectDetector};
 
     use super::CAT;
+    use crate::logging::*;
     use crate::{
         foundation::geom::Rect,
         infer::tf_buffer_adapter::TensorflowBufferAdapter,
@@ -54,7 +63,8 @@ mod imp {
         }
 
         fn post_to_bus(&self, msg: gst::Message) -> Result<()> {
-            debug!(CAT, obj: self.instance(), "Posting message on bus, {:?}", msg);
+            let instance = self.instance();
+            log!(CAT, obj: &instance, "Posting message on bus, {:?}", msg);
 
             let props_guard = self.props_storage.lock().unwrap();
             if let Some(bus) = props_guard.bus.as_ref() {
@@ -243,7 +253,8 @@ mod imp {
 
     impl BaseSinkImpl for DetectionSink {
         fn set_caps(&self, caps: &gst::Caps) -> Result<(), gst::LoggableError> {
-            info!(CAT, obj: self.obj(), "Setting caps to {:?}", caps);
+            let instance = self.obj();
+            info!(CAT, obj: instance, "Setting caps to {:?}", caps);
 
             let video_info = gst_video::VideoInfo::from_caps(caps).unwrap();
             info!(CAT, "Acquiring video info lock");
@@ -265,8 +276,11 @@ mod imp {
                     .map_err(|_| FlowError::Error)?;
             }
 
+            let start_ts = Instant::now();
+
             // Notify that we're beginning the inference frame
-            let dts = buffer.dts_or_pts().unwrap();
+            let dts = buffer.pts().unwrap();
+            debug!(CAT, "Starting inference frame {:?}", dts,);
             self.post_to_bus(
                 AAMessage::InferFrameStart { dts: dts }
                     .to_gst_message()
@@ -298,7 +312,7 @@ mod imp {
 
                 self.post_to_bus(
                     AAMessage::InferObjectDetection(DetectionDetails {
-                        dts,
+                        pts: dts,
                         label: label.into(),
                         score,
                         bounds: fractional_bounds,
@@ -314,12 +328,21 @@ mod imp {
                 AAMessage::InferFrameDone {
                     dts: dts,
                     detection_count: res.size() as i32,
+                    duration: start_ts.elapsed(),
                 }
                 .to_gst_message()
                 // TODO(shyndman): We really need to report the error text
                 .map_err(|_| gst::FlowError::Error)?,
             )
             .map_err(|_| FlowError::Error)?;
+
+            debug!(
+                CAT,
+                "Finished inference frame {:?}, detections={} duration={}",
+                dts,
+                res.size(),
+                start_ts.elapsed().as_secs_f32(),
+            );
 
             Ok(gst::FlowSuccess::Ok)
         }

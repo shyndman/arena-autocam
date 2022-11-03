@@ -1,5 +1,7 @@
 extern crate derive_more;
 
+use std::time::Duration;
+
 use anyhow::{anyhow, Result};
 use gst::ClockTime;
 use lazy_static::lazy_static;
@@ -21,18 +23,18 @@ lazy_static! {
 #[strum(serialize_all = "kebab-case")]
 #[strum(ascii_case_insensitive)]
 pub enum AAMessage {
-    /// When waiting for an element to initialize during pipeline creation, this
-    /// indicates the child is ready and we should continue
-    ResumeCreate,
-    /// dts can be considered this frame's identifier, and will be equal across
-    /// `InferFrameStart`, `InferObjectDetection` and `InferFrameDone` events.
-    /// messages.
-    InferFrameStart {
-        dts: ClockTime,
-    },
+    /// Emitted when the inference engine begins operating upon a frame.
+    ///
+    /// `dts` can be considered this frame's identifier, and will be the same across
+    /// `InferFrameStart`, `InferObjectDetection` and `InferFrameDone` events on the same
+    /// frame.
+    InferFrameStart { dts: ClockTime },
+    /// Indicates that an object detection has taken place. One message will be emitted
+    /// on the bus per object.
     InferObjectDetection(DetectionDetails),
     InferFrameDone {
         dts: ClockTime,
+        duration: Duration,
         detection_count: i32,
     },
 }
@@ -65,13 +67,12 @@ impl AAMessage {
         // that determine what we should pull out of the provided structure.
         let empty_message: AAMessage = message_name.parse()?;
         let full_message = match empty_message {
-            AAMessage::ResumeCreate => empty_message,
             AAMessage::InferFrameStart { .. } => AAMessage::InferFrameStart {
                 dts: structure.get("dts")?,
             },
             AAMessage::InferObjectDetection(..) => {
                 AAMessage::InferObjectDetection(DetectionDetails {
-                    dts: structure.get("dts")?,
+                    pts: structure.get("dts")?,
                     label: structure.get("label")?,
                     score: structure.get("score")?,
                     bounds: structure.get("bounds")?,
@@ -80,6 +81,7 @@ impl AAMessage {
             AAMessage::InferFrameDone { .. } => AAMessage::InferFrameDone {
                 dts: structure.get("dts")?,
                 detection_count: structure.get("detection_count")?,
+                duration: structure.get::<ClockTime>("duration")?.into(),
             },
         };
         Ok(full_message)
@@ -88,12 +90,11 @@ impl AAMessage {
     pub fn to_gst_message(&self) -> Result<gst::Message> {
         let mut structure = gst::Structure::new_empty(&self.kind());
         match self {
-            AAMessage::ResumeCreate => {}
             AAMessage::InferFrameStart { dts } => {
                 structure.set("dts", dts);
             }
             AAMessage::InferObjectDetection(DetectionDetails {
-                dts,
+                pts: dts,
                 label,
                 score,
                 bounds,
@@ -106,9 +107,14 @@ impl AAMessage {
             AAMessage::InferFrameDone {
                 dts,
                 detection_count,
+                duration,
             } => {
                 structure.set("dts", dts);
                 structure.set("detection_count", detection_count);
+                structure.set(
+                    "duration",
+                    <ClockTime as TryFrom<Duration>>::try_from(*duration).unwrap(),
+                );
             }
         }
         Ok(gst::message::Application::builder(structure).build())
@@ -117,7 +123,7 @@ impl AAMessage {
 
 #[derive(Debug, Default)]
 pub struct DetectionDetails {
-    pub dts: ClockTime,
+    pub pts: ClockTime,
     pub label: String,
     pub score: f32,
     pub bounds: Rect,
