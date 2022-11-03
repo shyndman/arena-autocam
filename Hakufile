@@ -164,8 +164,10 @@ run-app-test:
   # set-env('LIBCAMERA_LOG_LEVELS', '*:DEBUG')
   set-env('GST_PLUGIN_PATH', '/usr/local/lib/x86_64-linux-gnu/gstreamer-1.0:/usr/lib/x86_64-linux-gnu/gstreamer-1.0/:/home/shyndman/dev/gst-plugins-rs/target/debug/')
 
-  if !$GST_DEBUG:
-    set-env('GST_DEBUG', 'AA_*:5,6')
+  if $GST_DEBUG:
+    set-env('GST_DEBUG', 'AA_*:5,6,GST_REGISTRY:0,GST_PLUGIN_LOADING=0,${GST_DEBUG}')
+  else:
+    set-env('GST_DEBUG', "AA_*:5,6")
   end
 
   build_dir = "target/${TARGET}/${build_profile_subdir}"
