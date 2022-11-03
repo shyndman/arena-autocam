@@ -28,10 +28,31 @@ pub fn create_pipeline(config: &Config) -> Result<(glib::MainLoop, gst::Pipeline
 
     let SourcePads {
         display_stream_src_pad,
-        inference_stream_src_pad,
+        infer_stream_src_pad,
     } = create_media_sources(config, &pipeline)?;
-    create_display_stream_pipeline(&pipeline, &bus, &display_stream_src_pad, config)?;
-    create_infer_stream_pipeline(&pipeline, &bus, &inference_stream_src_pad, config)?;
+
+    // The multiqueue allows us to replace all other queues, and is responsible for
+    // ensuring that the encoder's heavy up-front frame requests (so it can determine how
+    // to properly encode) does not impact streams that are displayed in near real-time.
+    let queue = gst::ElementFactory::make("multiqueue")
+        .name("display/infer.multiqueue")
+        .property("max-size-bytes", 1024u32 * 1024 * 100)
+        .property("max-size-buffers", 0u32) // Disabled
+        .property("max-size-time", 0u64) // Disabled
+        .property("max-size-bytes", 0u32) // Disabled
+        .build()?;
+    pipeline.add(&queue)?;
+
+    let display_sink_pad = queue.request_pad_simple("sink_%u").unwrap();
+    display_stream_src_pad.link(&display_sink_pad)?;
+    let display_src_pad = display_sink_pad.iterate_internal_links().next()?.unwrap();
+
+    let infer_sink_pad = queue.request_pad_simple("sink_%u").unwrap();
+    infer_stream_src_pad.link(&infer_sink_pad)?;
+    let infer_src_pad = infer_sink_pad.iterate_internal_links().next()?.unwrap();
+
+    create_display_stream_pipeline(&pipeline, &bus, &display_src_pad, config)?;
+    create_infer_stream_pipeline(&pipeline, &bus, &infer_src_pad, config)?;
 
     Ok((main_loop, pipeline))
 }
@@ -41,7 +62,7 @@ fn create_display_stream_pipeline(
     bus: &gst::Bus,
     display_stream_src: &gst::Pad,
     config: &Config,
-) -> Result<(), Error> {
+) -> Result<()> {
     // Splits the display input to the (optional) debug pipeline and the filesystem
     // pipeline.
     let display_splitter = gst::ElementFactory::make("tee")
@@ -79,7 +100,7 @@ fn create_display_stream_persistence_branch(
     pipeline: &gst::Pipeline,
     _bus: &gst::Bus,
     src_pad: gst::Pad,
-) -> Result<(), Error> {
+) -> Result<()> {
     let encode_queue = gst::ElementFactory::make("queue")
         .name("display.persist.encoder.queue")
         .build()?;
@@ -137,14 +158,7 @@ fn create_display_stream_debug_branch(
     bus: &gst::Bus,
     src_pad: gst::Pad,
     config: &Config,
-) -> Result<(), Error> {
-    let queue = gst::ElementFactory::make("queue")
-        .name("display.debug.queue")
-        .property("max-size-time", 10.seconds().nseconds() as u64)
-        .property("max-size-bytes", 0u32) // disable
-        .property("max-size-buffers", 0u32) // disable
-        .build()?;
-
+) -> Result<()> {
     let overlay_convert1 = gst::ElementFactory::make("videoconvert")
         .name("display.debug.overlay_convert_in")
         .build()?;
@@ -157,14 +171,13 @@ fn create_display_stream_debug_branch(
         .build()?;
 
     let elements = &[
-        &queue,
         &overlay_convert1,
         &overlay_display,
         &overlay_convert2,
         &sink_display,
     ];
     pipeline.add_many(elements)?;
-    src_pad.link(&find_sink_pad(&queue)?)?;
+    src_pad.link(&find_sink_pad(&overlay_convert1)?)?;
     gst::Element::link_many(elements)?;
 
     let duration = config.inference.inference_frame_duration();
@@ -194,9 +207,8 @@ fn create_infer_stream_pipeline(
     bus: &gst::Bus,
     infer_src_pad: &gst::Pad,
     config: &Config,
-) -> Result<(), Error> {
+) -> Result<()> {
     let infer_rate = gst::ElementFactory::make("videorate").build()?;
-
     let infer_framerate_caps = gst::ElementFactory::make("capsfilter")
         .property(
             "caps",
@@ -211,12 +223,7 @@ fn create_infer_stream_pipeline(
         .dynamic_cast::<gst::Element>()
         .unwrap();
     infer_detection_sink.set_property("bus", &bus);
-    let elements = &[
-        &infer_rate,
-        &infer_framerate_caps,
-        // &infer_queue,
-        &infer_detection_sink,
-    ];
+    let elements = &[&infer_rate, &infer_framerate_caps, &infer_detection_sink];
     pipeline.add_many(elements)?;
 
     infer_src_pad.link(&find_sink_pad(&infer_rate)?)?;

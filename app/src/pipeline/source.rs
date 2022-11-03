@@ -14,7 +14,7 @@ use crate::pipeline::CREATE_CAT as CAT;
 
 pub(super) struct SourcePads {
     pub display_stream_src_pad: gst::Pad,
-    pub inference_stream_src_pad: gst::Pad,
+    pub infer_stream_src_pad: gst::Pad,
 }
 
 pub(super) fn create_media_sources(
@@ -63,7 +63,7 @@ fn build_libcamera_streams(pipeline: &gst::Pipeline) -> Result<SourcePads> {
     );
     Ok(SourcePads {
         display_stream_src_pad: display_pad,
-        inference_stream_src_pad: inference_pad,
+        infer_stream_src_pad: inference_pad,
     })
 }
 
@@ -139,7 +139,7 @@ fn synthesize_libcamera_streams(
 
     Ok(SourcePads {
         display_stream_src_pad: find_src_pad(&queue_display)?,
-        inference_stream_src_pad: find_src_pad(&caps_filter_infer)?,
+        infer_stream_src_pad: find_src_pad(&caps_filter_infer)?,
     })
 }
 
@@ -284,6 +284,6 @@ fn setup_debug_video_sources(
 
     Ok(SourcePads {
         display_stream_src_pad: find_src_pad(&queue_display)?,
-        inference_stream_src_pad: find_src_pad(&caps_filter_infer)?,
+        infer_stream_src_pad: find_src_pad(&caps_filter_infer)?,
     })
 }
