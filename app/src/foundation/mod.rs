@@ -1,3 +1,4 @@
+pub mod color;
 #[allow(unused_imports)]
 pub mod debug;
 pub mod geom;
