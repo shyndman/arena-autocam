@@ -15,3 +15,6 @@ dataset
 
 # .env files contain secrets sometimes
 .env
+
+# I use temporary folders from time to time
+/tmp
