@@ -10,4 +10,4 @@ COPY include/install_dev_dependencies.sh ./install_dev_dependencies.sh
 RUN chmod +x ./install_dev_dependencies.sh
 RUN --mount=type=cache,target=/var/cache/apt,sharing=shared \
     --mount=type=cache,target=/var/lib/apt,sharing=shared \
-    bash ./install_dev_dependencies.sh
+    ./install_dev_dependencies.sh

@@ -21,8 +21,16 @@ _prepare_target_env:
     println("Expanded '${target}' from prefix match")
     target = $new_target
   end
+
+  if $target == $AARCH64_TARGET_TRIPLE:
+    docker_arch = "aarch64"
+  else:
+    docker_arch = "amd64"
+  end
+
   println("Using TARGET=${target}")
   set-env("TARGET", $target)
+  set-env("TARGETARCH_DOCKER", $docker_arch)
 
 _prepare_profile_env:
   profile = trim($PROFILE)

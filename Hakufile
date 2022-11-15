@@ -14,6 +14,7 @@ end
 
 # Docker globals
 docker_cmd_with_opts = "docker --log-level=info"
+docker_repo = "ubuntu-desktop.local:5000"
 set-env("BUILDKIT_PROGRESS", "plain")
 
 # Computed by _setup_target_docker_compose_string
@@ -84,39 +85,34 @@ run: setup_target_docker_compose_string
         --pull always --no-build"
     ${up_cmd}
 
-## Sets environment variables needed by the example pipelines
-_setup-pipeline-env:
-  if !$cargo_target_dir:
-    error "CARGO env not set"
-  end
+build_example example_name: prepare_env create_builder
+  image_name = "${docker_repo}/arena-autocam/${example_name}_example_build_${TARGETARCH_DOCKER}"
+  tagged_image_name = "${image_name}:latest"
+  build_cache_image_name = "${image_name}:build-cache"
 
-  set-env("CARGO_TARGET_PROFILE_DIR", join($cargo_target_dir, $build_profile))
-  set-env("AA_LIB_SUPPORT_DIR", join($CARGO_TARGET_PROFILE_DIR, "lib/support"))
-  set-env("AA_LIB_GST_DIR", join($CARGO_TARGET_PROFILE_DIR, "lib/gst"))
-  set-env("AA_PATHS_SET", 1)
+  println("Building ${tagged_image_name}")
 
-create_builder:
-  # The caller can force the creation of a builder (which we implement by
-  # destroying it first)
-  if is_set('create_builder_force'):
-    @docker buildx rm ${BUILDER_NAME}
-  end
+  ${docker_cmd_with_opts} buildx build \
+    --builder=${BUILDER_NAME} \
+    --cache-from=type=registry,ref=${build_cache_image_name} \
+    --cache-to=type=registry,ref=${build_cache_image_name},mode=max \
+    --allow=network.host,security.insecure \
+    --network=host \
+    --progress=plain \
+    --file=docker/build-example.dockerfile \
+    --build-arg DOCKER_REPO=${docker_repo} \
+    --build-arg RUST_EXAMPLE=${example_name} \
+    --build-arg RUST_PROFILE=${PROFILE} \
+    --build-arg RUST_TARGET=${TARGET} \
+    --build-arg TARGETARCH_DOCKER=${TARGETARCH_DOCKER} \
+    --no-cache \
+    --tag=${tagged_image_name} \
+    --output type=image,push=true \
+    ${package_home}/
 
-  has_builder = `docker buildx use ${BUILDER_NAME}`
-  if !${has_builder}:
-    # Build a builder with local platforms
-    docker buildx create --driver=docker-container \
-        --name=${BUILDER_NAME} \
-        --config ${package_home}/docker/config/buildkitd.toml \
-        --driver-opt=network=host \
-        --bootstrap --use \
-        --buildkitd-flags '--allow-insecure-entitlement security.insecure' \
-        ${invoke-dir()}
-  end
 
 ## Builds the Docker images used to build the application
 build_platform_builder_bases: create_builder
-  docker_repo = "ubuntu-desktop.local:5000"
   image_base_name = "${docker_repo}/arena-autocam/builder_base"
 
   # Build the base build image
@@ -161,89 +157,25 @@ build_platform_builder_bases: create_builder
       ${package_home}/docker
   end
 
-_copy-shared-libraries: setup-pipeline-env
-  profile_target_path=$CARGO_TARGET_PROFILE_DIR
-  if !$AA_PATHS_SET
-    echo "Paths not not set. Please run :setup-pipeline-env"
-    exit 1
+## Creates a buildx builder instance, if necessary
+create_builder:
+  # The caller can force the creation of a builder (which we implement by
+  # destroying it first)
+  if is_set('create_builder_force'):
+    @docker buildx rm ${BUILDER_NAME}
   end
 
-  mkdir -p $AA_LIB_SUPPORT_DIR $AA_LIB_GST_DIR
-
-  # Copy GST plugins
-  cp -f ${profile_target_path}/${gst_plugins_so_filename} ${AA_LIB_GST_DIR}/${gst_plugins_so_filename}
-
-  # Copy TFLite support lib
-  libobject_detector_path=`find ${profile_target_path}/build/tflite-support-* \
-      -name 'libobject_detector_c.so' -printf "%T+ %p\n" | \
-      sort -r | \
-      head -n1 | \
-      awk '{print $2}'`
-  cp -f ${libobject_detector_path} ${AA_LIB_SUPPORT_DIR}/libobject_detector_c.so
-
-_setup-gst-env: copy-shared-libraries
-  set-env("GST_PLUGIN_PATH", ${AA_LIB_GST_DIR})
-  set-env("LD_LIBRARY_PATH", ${AA_LIB_SUPPORT_DIR})
-
-gst_launch_flags = "--gst-debug-level=3 --gst-debug=AA_INFER:5,GST_STATES:3,GST_REFCOUNTING:3,videodecoder:1 -v --eos-on-shutdown"
-gst_launch_cmd = "gst-launch-1.0 ${gst_launch_flags}"
-
-video_src = "filesrc location='sample_data/inference-source-1.mp4'"
-# video_src = "videotestsrc is-live=true pattern=ball"
-infer_caps = "video/x-raw,width=320,height=240,format=RGB"
-
-run-aainfersink-pipeline: setup-gst-env
-  ${gst_launch_cmd} \
-      ${video_src} ! \
-      ${infer_caps} ! \
-      rawvideoparse format=rgb ! \
-      aainfersink
-
-run-aainferpass-pipeline: setup-gst-env
-  ${gst_launch_cmd} \
-      ${video_src} ! \
-      decodebin ! \
-      videoconvert ! \
-      videoscale ! \
-      ${infer_caps} ! \
-      aainferpass ! \
-      timeoverlay time-mode=4 font-desc="Sans, 42" halignment=center valignment=top ! \
-      videoconvert ! \
-      fpsdisplaysink
-
-
-run-app-test +extra-args:
-  # set-env('LIBCAMERA_LOG_LEVELS', '*:DEBUG')
-  set-env('GST_PLUGIN_PATH', '/usr/local/lib/x86_64-linux-gnu/gstreamer-1.0:/usr/lib/x86_64-linux-gnu/gstreamer-1.0/:/home/shyndman/dev/gst-plugins-rs/target/debug/')
-
-  if $GST_DEBUG:
-    set-env('GST_DEBUG', 'AA_*:5,6,GST_REGISTRY:0,GST_PLUGIN_LOADING:0,GST_REFCOUNTING:0,GST_TYPEFIND:0,${GST_DEBUG}')
-  else:
-    set-env('GST_DEBUG', "AA_*:5,6")
+  has_builder = `docker buildx use ${BUILDER_NAME}`
+  if !${has_builder}:
+    # Build a builder with local platforms
+    docker buildx create --driver=docker-container \
+        --name=${BUILDER_NAME} \
+        --config ${package_home}/docker/config/buildkitd.toml \
+        --driver-opt=network=host \
+        --bootstrap --use \
+        --buildkitd-flags '--allow-insecure-entitlement security.insecure' \
+        ${invoke-dir()}
   end
-
-  build_dir = "target/${TARGET}/${build_profile_subdir}"
-  video_storage_path = "${build_dir}/videos"
-  mkdir -p ${video_storage_path}
-
-  graph_snapshot_dir = "${build_dir}/graph-snapshots"
-  mkdir -p ${graph_snapshot_dir}
-  set-env('GST_DEBUG_DUMP_DOT_DIR', $graph_snapshot_dir)
-
-  rm -f ${graph_snapshot_dir}/*.dot
-  rm -f ${video_storage_path}/*.mp4
-
-  infer-rate = "--rate-per-second 5.0"
-  if contains($extra-args, "--rate-per-second"):
-    infer-rate = ""
-  end
-
-  cargo run --bin=aa-app --profile=${PROFILE} -- \
-      --model-path sample_data/detection-model.tflite \
-      --debug-source-video-path=sample_data/inference-source-1.mp4 \
-      --temp-dir-path ${video_storage_path} \
-      ${infer-rate} \
-      ${extra-args}
 
 clean:
   cargo clean
