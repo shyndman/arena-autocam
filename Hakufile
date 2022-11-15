@@ -116,9 +116,27 @@ create_builder:
 
 ## Builds the Docker images used to build the application
 build_platform_builder_bases: create_builder
-  image_base_name = "ubuntu-desktop.local:5000/arena-autocam/builder_base"
-  platform_image_names = ""
+  docker_repo = "ubuntu-desktop.local:5000"
+  image_base_name = "${docker_repo}/arena-autocam/builder_base"
 
+  # Build the base build image
+  image_name = "${image_base_name}"
+  tagged_image_name = "${image_name}:latest"
+  build_cache_image_name = "${image_name}:build-cache"
+  ${docker_cmd_with_opts} buildx build \
+    --builder=${BUILDER_NAME} \
+    --cache-from=type=registry,ref=${build_cache_image_name} \
+    --cache-to=type=registry,ref=${build_cache_image_name},mode=max \
+    --allow=network.host,security.insecure \
+    --network=host \
+    --progress=plain \
+    --file=docker/builder-base.dockerfile \
+    --build-arg DOCKER_REPO=${docker_repo} \
+    --tag=${tagged_image_name} \
+    --output type=image,push=true \
+    ${package_home}/docker
+
+  # Build the arch-specific build bases
   for platform in ${DOCKER_PLATFORMS}:
     os = field-sep($platform, "/", 0)
     arch = field-sep($platform, "/", 1)
@@ -129,32 +147,19 @@ build_platform_builder_bases: create_builder
     # Build the platform image
     ${docker_cmd_with_opts} buildx build \
       --builder=${BUILDER_NAME} \
+      --pull \
       --cache-from=type=registry,ref=${build_cache_image_name} \
       --cache-to=type=registry,ref=${build_cache_image_name},mode=max \
       --allow=network.host,security.insecure \
       --network=host \
       --progress=plain \
-      --file=docker/Dockerfile.${arch}.base \
+      --file=docker/builder-base.${arch}.dockerfile \
+      --build-arg DOCKER_REPO=${docker_repo} \
       --platform=${platform} \
-      --target=shell_setup \
       --tag=${tagged_image_name} \
       --output type=image,push=true \
       ${package_home}/docker
-
-    # Push the platform image to our private registry
-    # ${docker_cmd_with_opts} image push ${tagged_image_name}
-
-    # Record the name of the built image
-    platform_image_names = "${platform_image_names} ${tagged_image_name}"
   end
-
-  # Create and push the multi-arch manifest
-  multiplatform_image_name = "${image_base_name}:latest"
-  ${docker_cmd_with_opts} manifest create --amend --insecure \
-      ${multiplatform_image_name} \
-      ${platform_image_names}
-  ${docker_cmd_with_opts} manifest push --insecure ${multiplatform_image_name}
-
 
 _copy-shared-libraries: setup-pipeline-env
   profile_target_path=$CARGO_TARGET_PROFILE_DIR
