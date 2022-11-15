@@ -1,5 +1,7 @@
+.git*
 .history
 .vscode
+*.md
 model_training
 sample_data
 target

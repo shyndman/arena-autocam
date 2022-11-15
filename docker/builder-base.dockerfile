@@ -26,6 +26,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=shared \
 FROM shell_setup AS rustup_builder
 RUN curl https://sh.rustup.rs -sSf > rust_init.sh; \
     chmod +x rust_init.sh;
+
+# Install rust tooling with an x86_64 toolchain (arch-specific targets may be
+# added later)
 RUN ["/bin/zsh", "-c", "\
     ./rust_init.sh -y \
           --default-host=x86_64-unknown-linux-gnu \

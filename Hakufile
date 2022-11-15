@@ -86,6 +86,27 @@ run: setup_target_docker_compose_string
     ${up_cmd}
 
 build_example example_name: prepare_env create_builder
+  image_name = "${docker_repo}/arena-autocam/pre_build_io_${TARGETARCH_DOCKER}"
+  tagged_image_name = "${image_name}:latest"
+  build_cache_image_name = "${image_name}:build-cache"
+
+  println("Building ${tagged_image_name}")
+
+  ${docker_cmd_with_opts} buildx build \
+    --builder=${BUILDER_NAME} \
+    --pull \
+    --cache-from=type=registry,ref=${build_cache_image_name} \
+    --cache-to=type=registry,ref=${build_cache_image_name},mode=max \
+    --allow=network.host,security.insecure \
+    --network=host \
+    --progress=plain \
+    --file=docker/pre-build-io.dockerfile \
+    --build-arg DOCKER_REPO=${docker_repo} \
+    --build-arg TARGETARCH_DOCKER=${TARGETARCH_DOCKER} \
+    --tag=${tagged_image_name} \
+    --output type=image,push=true \
+    ${package_home}/
+
   image_name = "${docker_repo}/arena-autocam/${example_name}_example_build_${TARGETARCH_DOCKER}"
   tagged_image_name = "${image_name}:latest"
   build_cache_image_name = "${image_name}:build-cache"
@@ -94,18 +115,18 @@ build_example example_name: prepare_env create_builder
 
   ${docker_cmd_with_opts} buildx build \
     --builder=${BUILDER_NAME} \
+    --pull \
     --cache-from=type=registry,ref=${build_cache_image_name} \
     --cache-to=type=registry,ref=${build_cache_image_name},mode=max \
     --allow=network.host,security.insecure \
     --network=host \
     --progress=plain \
-    --file=docker/build-example.dockerfile \
+    --file=docker/build-single-target.dockerfile \
     --build-arg DOCKER_REPO=${docker_repo} \
-    --build-arg RUST_EXAMPLE=${example_name} \
+    --build-arg RUST_BUILD_TARGET='--example ${example_name}' \
     --build-arg RUST_PROFILE=${PROFILE} \
     --build-arg RUST_TARGET=${TARGET} \
     --build-arg TARGETARCH_DOCKER=${TARGETARCH_DOCKER} \
-    --no-cache \
     --tag=${tagged_image_name} \
     --output type=image,push=true \
     ${package_home}/
