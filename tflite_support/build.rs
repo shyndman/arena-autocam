@@ -1,10 +1,12 @@
 #![feature(const_mut_refs)]
 
 extern crate bindgen;
-use std::env;
-use std::fmt::Debug;
-use std::path::{Path, PathBuf};
-use std::time::Instant;
+use std::{
+    env,
+    fmt::Debug,
+    path::{Path, PathBuf},
+    time::Instant,
+};
 
 use anyhow::Result;
 use const_format::formatc;
@@ -251,12 +253,17 @@ fn configure_build(tf_src_path: &Path) {
     // Invoke configure.py -- it will run automatically because of the env vars we've set
     std::fs::create_dir_all(tf_src_path.join("tools"))
         .expect("Could not create tools directory (required by configure.py)");
-    let python_bin_path = env::var("PYTHON_BIN_PATH").expect("Cannot read PYTHON_BIN_PATH");
+    let python_bin_path = get_python_bin_path().expect("Cannot read PYTHON_BIN_PATH");
     if !std::process::Command::new(&python_bin_path)
         .arg("configure.py")
         .current_dir(tf_src_path)
         .status()
-        .unwrap_or_else(|_| panic!("Cannot execute python at {}", &python_bin_path))
+        .unwrap_or_else(|_| {
+            panic!(
+                "Cannot execute python at {}",
+                python_bin_path.to_str().unwrap()
+            )
+        })
         .success()
     {
         panic!("Cannot configure tensorflow")

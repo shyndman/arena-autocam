@@ -7,7 +7,7 @@ use crate::{
         RustBuildProfile, RustBuildTarget, RustBuildTargets, RustTargetId, TargetArchitecture,
     },
     cmd::*,
-    BuildContext,
+    ctx::BuildContext,
 };
 
 const IMAGE_APP_COMPONENT: &str = "arena-autocam";
@@ -45,6 +45,8 @@ struct TargetImageNames {
 
 fn build_image(options: ImageBuildOptions, context: &BuildContext) -> Result<()> {
     let docker_repository_url = &context.docker_repository_url;
+    let docker_repository_ip = &context.docker_repository_ip;
+
     let TargetImageNames {
         image_name: _image_name,
         tagged_image_name,
@@ -55,10 +57,17 @@ fn build_image(options: ImageBuildOptions, context: &BuildContext) -> Result<()>
     let docker_context_path = options.docker_context_path;
 
     let rust_profile = options.rust_profile.to_string();
+    let rust_profile_dir_args = options
+        .rust_profile
+        .output_dir_component()
+        .into_docker_build_arg("RUST_PROFILE_OUT_DIR");
     let rust_build_target = options.rust_build_target.map_or(vec![], |name| {
         name.to_cargo_arg()
             .into_docker_build_arg("RUST_BUILD_TARGET")
     });
+    let rust_pkg_config_args = options
+        .target_arch
+        .map_or(vec![], |arch| pkg_config_build_arg_for_arch(arch));
     let rust_target_args = options.target_arch.map_or(vec![], |arch| {
         arch.rust_triple().into_docker_build_arg("RUST_TARGET")
     });
@@ -68,20 +77,30 @@ fn build_image(options: ImageBuildOptions, context: &BuildContext) -> Result<()>
     let docker_platform_args = options.target_arch.map_or(vec![], |arch| {
         arch.docker_platform().into_cmd_arg("platform")
     });
-    let no_cache_args: Vec<String> = if context.no_cache {
-        vec!["--no-cache".into()]
+    let cache_args: Vec<String> = if context.is_build_cache_enabled() {
+        vec![
+            format!(
+                "--cache-from=type=registry,ref={cache_name}",
+                cache_name = build_cache_image_name
+            ),
+            format!(
+                "--cache-to=type=registry,ref={cache_name},mode=max",
+                cache_name = build_cache_image_name
+            ),
+        ]
     } else {
-        vec![]
+        vec!["--no-cache=true".into()]
     };
 
+    // Build the image, and push it to the
     run_cmd! (
         docker --log-level=info buildx build
             --builder=$BUILDER_NAME
             --pull
-            --cache-from=type=registry,ref=$build_cache_image_name
-            --cache-to=type=registry,ref=$build_cache_image_name,mode=max
+            $[cache_args]
             --allow=network.host,security.insecure
             --network=host
+            --add-host=ubuntu-desktop.local:$docker_repository_ip
             --progress=plain
             --file=$dockerfile_path
             // This is `--platform=linux/{arch}`, which may not be provided
@@ -90,14 +109,34 @@ fn build_image(options: ImageBuildOptions, context: &BuildContext) -> Result<()>
             --build-arg RUST_PROFILE=$rust_profile
             $[rust_build_target]
             $[rust_target_args]
+            $[rust_pkg_config_args]
+            $[rust_profile_dir_args]
             $[docker_target_arch_args]
             --tag=$tagged_image_name
             --output type=image,push=true
-            $[no_cache_args]
             $docker_context_path
     )?;
 
+    run_cmd!(docker --log-level=info image pull $tagged_image_name)?;
+
     Ok(())
+}
+
+fn pkg_config_build_arg_for_arch(arch: TargetArchitecture) -> Vec<String> {
+    match arch {
+        TargetArchitecture::Aarch64 => {
+            let mut args = "PKG_CONFIG_ALLOW_CROSS=1"
+                .to_string()
+                .into_docker_build_arg("RUST_PKG_CONFIG_ALLOW_CROSS");
+            args.extend(
+                "PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig/"
+                    .to_string()
+                    .into_docker_build_arg("RUST_PKG_CONFIG_PATH"),
+            );
+            args
+        }
+        TargetArchitecture::Amd64 => vec![],
+    }
 }
 
 fn build_image_for_target(target: RustBuildTarget, context: &BuildContext) -> Result<()> {
@@ -133,6 +172,19 @@ pub fn build_images_for_targets(
     targets: &RustBuildTargets,
     context: &BuildContext,
 ) -> Result<()> {
+    // Build the pre-build-io image, which is expensive, but almost always cached.
+    build_image(
+        ImageBuildOptions {
+            image_basename: format!("pre_build_io_{}", targets.arch.to_string()),
+            dockerfile_path: "docker/pre-build-io.dockerfile".into(),
+            docker_context_path: context.workspace_root_path.clone(),
+            target_arch: Some(targets.arch),
+            rust_profile: targets.profile,
+            ..Default::default()
+        },
+        context,
+    )?;
+
     for t in targets.into_iter() {
         build_image_for_target(t, context)?
     }

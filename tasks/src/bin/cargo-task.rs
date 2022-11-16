@@ -1,10 +1,12 @@
 use anyhow::Result;
 use cargo_task::{
     cargo::{workspace_path, RustBuildTargets},
+    ctx::BuildContext,
     docker::{build_base_images, build_images_for_targets},
-    BuildContext,
 };
 use clap::{Parser, Subcommand};
+use dns_lookup::lookup_host;
+use log::*;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -25,14 +27,27 @@ enum Commands {
 }
 
 fn main() -> Result<()> {
-    cmd_lib::init_builtin_logger();
+    env_logger::builder()
+        .format_timestamp(None)
+        // cmd_lib prints out run_cmd! strings at debug
+        .filter_level(LevelFilter::Debug)
+        .init();
+    cmd_lib::set_debug(true);
 
     let cli = Cli::parse();
+    let repository_host_port = "ubuntu-desktop.local:5000".into();
+    let repository_ip = lookup_host("ubuntu-desktop.local")?
+        .first()
+        .unwrap()
+        .to_owned();
     let context = BuildContext::new(
-        "ubuntu-desktop.local:5000".into(),
+        repository_host_port,
+        repository_ip,
         workspace_path()?,
         cli.no_cache,
     );
+
+    debug!("Build context created: {:#?}", context);
 
     match &cli.command {
         Commands::BuildBaseImages => build_base_images(&context),

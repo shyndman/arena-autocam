@@ -11,11 +11,28 @@ pub enum RustBuildProfile {
     Release,
     Test,
 }
+
+impl RustBuildProfile {
+    // The target directory is structured as follows:
+    // `{project-root}/target/{target-triple}/{profile-dir}/`
+    // where {profile-dir} is the value returned from this method.
+    pub fn output_dir_component(&self) -> String {
+        match self {
+            RustBuildProfile::Bench => "release",
+            RustBuildProfile::Dev => "debug",
+            RustBuildProfile::Release => "release",
+            RustBuildProfile::Test => "debug",
+        }
+        .to_string()
+    }
+}
+
 impl Default for RustBuildProfile {
     fn default() -> Self {
         RustBuildProfile::Dev
     }
 }
+
 impl Display for RustBuildProfile {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
@@ -100,7 +117,7 @@ pub struct RustBuildTargets {
     #[arg(long, default_value = "dev")]
     pub profile: RustBuildProfile,
     #[arg(long, default_value = "amd64")]
-    pub target: TargetArchitecture,
+    pub arch: TargetArchitecture,
 }
 
 impl IntoIterator for &RustBuildTargets {
@@ -113,14 +130,14 @@ impl IntoIterator for &RustBuildTargets {
         if let Some(ref bin_name) = self.bin {
             v.push(RustBuildTarget {
                 id: RustTargetId::Bin(bin_name.to_string()),
-                arch: self.target,
+                arch: self.arch,
                 profile: self.profile,
             });
         }
         if let Some(ref example_name) = self.example {
             v.push(RustBuildTarget {
                 id: RustTargetId::Example(example_name.to_string()),
-                arch: self.target,
+                arch: self.arch,
                 profile: self.profile,
             });
         }

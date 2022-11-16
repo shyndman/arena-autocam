@@ -12,8 +12,7 @@ WORKDIR /root/build
 RUN --mount=type=cache,target=/root/.cargo/registry,sharing=shared \
     --mount=type=cache,target=/root/.cargo/git,sharing=shared \
     ["/bin/zsh", "-c", "\
-        cargo install cargo-task \
-    "]
+        cargo install xargo"]
 
 # Copy all application files not covered by the root .dockerignore
 FROM builder_base AS source_copier
@@ -23,4 +22,4 @@ COPY . .
 FROM source_copier AS dependency_fetcher
 RUN --mount=type=cache,target=/root/.cargo/registry,sharing=shared \
     --mount=type=cache,target=/root/.cargo/git,sharing=shared \
-    zsh -c "cargo fetch"
+    zsh -c "cargo -v fetch"
