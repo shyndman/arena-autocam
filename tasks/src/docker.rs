@@ -145,7 +145,7 @@ fn build_image_for_target(target: RustBuildTarget, context: &BuildContext) -> Re
     let dockerfile_path = [
         &context.workspace_root_path.as_str(),
         "docker",
-        "build-single-target.dockerfile",
+        "3.build-single-target.dockerfile",
     ]
     .iter()
     .collect();
@@ -176,7 +176,7 @@ pub fn build_images_for_targets(
     build_image(
         ImageBuildOptions {
             image_basename: format!("pre_build_io_{}", targets.arch.to_string()),
-            dockerfile_path: "docker/pre-build-io.dockerfile".into(),
+            dockerfile_path: "docker/2.pre-build-io.dockerfile".into(),
             docker_context_path: context.workspace_root_path.clone(),
             target_arch: Some(targets.arch),
             rust_profile: targets.profile,
@@ -198,7 +198,7 @@ pub fn build_base_images(context: &BuildContext) -> Result<()> {
     build_image(
         ImageBuildOptions {
             image_basename: image_basename.into(),
-            dockerfile_path: "docker/builder-base.dockerfile".into(),
+            dockerfile_path: "docker/0.builder-base.dockerfile".into(),
             docker_context_path: "docker".into(),
             ..Default::default()
         },
@@ -210,7 +210,7 @@ pub fn build_base_images(context: &BuildContext) -> Result<()> {
         build_image(
             ImageBuildOptions {
                 image_basename: format!("{}_{}", image_basename, arch),
-                dockerfile_path: format!("docker/builder-base.{}.dockerfile", arch).into(),
+                dockerfile_path: format!("docker/1.builder-base.{}.dockerfile", arch).into(),
                 docker_context_path: "docker".into(),
                 target_arch: Some(arch),
                 ..Default::default()

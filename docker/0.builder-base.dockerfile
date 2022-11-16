@@ -3,7 +3,7 @@ ARG DOCKER_REPO
 FROM --platform=$BUILDPLATFORM $DOCKER_REPO/balenalib/amd64-debian:bookworm-build AS machine_base
 WORKDIR /root
 
-# Update the package manager and install some basics
+# ~~~~ UPDATE APT AND INSTALL SOME BASICS
 RUN --mount=type=cache,target=/var/cache/apt,sharing=shared \
     --mount=type=cache,target=/var/lib/apt,sharing=shared \
     apt-get update && \
