@@ -1,0 +1,16 @@
+[package]
+name = "aa-tasks"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "cargo_task"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow = "1.0.66"
+cargo_metadata = "0.15.1"
+clap = { version = "4.0.25", features = ["derive"] }
+cmd_lib = "1.3.0"
+escargot = "0.5.7"

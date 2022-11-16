@@ -86,7 +86,7 @@ run: setup_target_docker_compose_string
     ${up_cmd}
 
 build_example example_name: prepare_env create_builder
-  image_name = "${docker_repo}/arena-autocam/pre_build_io_${TARGETARCH_DOCKER}"
+  image_name = "${docker_repo}/arena-autocam/pre_build_io_${DOCKER_TARGET_ARCH}"
   tagged_image_name = "${image_name}:latest"
   build_cache_image_name = "${image_name}:build-cache"
 
@@ -102,12 +102,12 @@ build_example example_name: prepare_env create_builder
     --progress=plain \
     --file=docker/pre-build-io.dockerfile \
     --build-arg DOCKER_REPO=${docker_repo} \
-    --build-arg TARGETARCH_DOCKER=${TARGETARCH_DOCKER} \
+    --build-arg DOCKER_TARGET_ARCH=${DOCKER_TARGET_ARCH} \
     --tag=${tagged_image_name} \
     --output type=image,push=true \
     ${package_home}/
 
-  image_name = "${docker_repo}/arena-autocam/${example_name}_example_build_${TARGETARCH_DOCKER}"
+  image_name = "${docker_repo}/arena-autocam/${example_name}_example_build_${DOCKER_TARGET_ARCH}"
   tagged_image_name = "${image_name}:latest"
   build_cache_image_name = "${image_name}:build-cache"
 
@@ -126,7 +126,7 @@ build_example example_name: prepare_env create_builder
     --build-arg RUST_BUILD_TARGET='--example ${example_name}' \
     --build-arg RUST_PROFILE=${PROFILE} \
     --build-arg RUST_TARGET=${TARGET} \
-    --build-arg TARGETARCH_DOCKER=${TARGETARCH_DOCKER} \
+    --build-arg DOCKER_TARGET_ARCH=${DOCKER_TARGET_ARCH} \
     --tag=${tagged_image_name} \
     --output type=image,push=true \
     ${package_home}/

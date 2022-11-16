@@ -4,8 +4,8 @@
 # requested, ideally performing very little work. It runs in the context of the
 # workspace root.
 ARG DOCKER_REPO
-ARG TARGETARCH_DOCKER
-FROM --platform=$BUILDPLATFORM $DOCKER_REPO/arena-autocam/builder_base_${TARGETARCH_DOCKER}:latest AS builder_base
+ARG DOCKER_TARGET_ARCH
+FROM --platform=$BUILDPLATFORM $DOCKER_REPO/arena-autocam/builder_base_${DOCKER_TARGET_ARCH}:latest AS builder_base
 WORKDIR /root/build
 
 # Perform a search to force an index download

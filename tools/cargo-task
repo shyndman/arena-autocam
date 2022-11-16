@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+shift
+cargo --quiet run --bin=cargo-task -- $@
