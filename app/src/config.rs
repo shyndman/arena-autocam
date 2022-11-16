@@ -10,7 +10,6 @@ use figment::{
 };
 use gst::prelude::TimeFormatConstructor;
 use once_cell::sync::Lazy;
-use serde::Deserialize;
 use serde_derive::{Deserialize, Serialize};
 use strfmt::strfmt;
 
@@ -219,11 +218,11 @@ trait Validate: Sized {
 }
 
 trait ValidatedFigment {
-    fn extract_validated<'a, T: Deserialize<'a> + Validate>(&self) -> Result<T>;
+    fn extract_validated<'a, T: serde::Deserialize<'a> + Validate>(&self) -> Result<T>;
 }
 
 impl ValidatedFigment for Figment {
-    fn extract_validated<'a, T: Deserialize<'a> + Validate>(&self) -> Result<T> {
+    fn extract_validated<'a, T: serde::Deserialize<'a> + Validate>(&self) -> Result<T> {
         let value: T = self.extract()?;
         if let Err(err) = (&value).validate() {
             Err(err)

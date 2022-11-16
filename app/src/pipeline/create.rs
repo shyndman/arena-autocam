@@ -1,11 +1,14 @@
-use anyhow::{Error, Result};
+use anyhow::Result;
 use gst::prelude::*;
 use gst_app::prelude::BaseSinkExt;
 
-use super::source::{create_media_sources, SourcePads};
-use super::{names, CREATE_CAT as CAT};
-use crate::config::Config;
+use super::{
+    names,
+    source::{create_media_sources, SourcePads},
+    CREATE_CAT as CAT,
+};
 use crate::{
+    config::Config,
     foundation::gst::find_sink_pad,
     infer::{build_detection_overlay, DetectionSink},
     logging::*,
