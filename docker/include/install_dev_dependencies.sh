@@ -9,7 +9,7 @@ if [[ ! -v TARGETARCH ]]; then
 fi
 
 apt-get update && \
-  apt-get --assume-yes install \
+apt-get --assume-yes install \
   libcairo2-dev:$TARGETARCH \
   libgstreamer1.0-dev:$TARGETARCH \
   gstreamer1.0-plugins-base:$TARGETARCH \
@@ -29,10 +29,10 @@ git config --system https.postBuffer 524288000
 
 # Tflite build requirements
 # Bazelisk
-wget https://github.com/bazelbuild/bazelisk/releases/download/v1.14.0/bazelisk-linux-amd64;
-chmod +x bazelisk-linux-amd64;
-mv ./bazelisk-linux-amd64 /usr/bin/bazel;
+wget https://github.com/bazelbuild/bazelisk/releases/download/v1.14.0/bazelisk-linux-amd64
+chmod +x bazelisk-linux-amd64
+mv ./bazelisk-linux-amd64 /usr/bin/bazel
 
 # Python deps
-apt-get --assume-yes install python3-pip;
-pip3 install numpy;
+apt-get --assume-yes install python3-pip
+pip3 install numpy
