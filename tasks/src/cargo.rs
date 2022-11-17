@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use anyhow::Result;
 use cargo_metadata::camino::Utf8PathBuf;
-use clap::{Args, ValueEnum};
+use clap::ValueEnum;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum RustBuildProfile {
@@ -83,16 +83,38 @@ impl Default for TargetArchitecture {
     }
 }
 
-#[derive(Clone)]
-pub enum RustTargetId {
-    Bin(String),
-    Example(String),
-}
 pub struct RustBuildTarget {
     pub id: RustTargetId,
     pub profile: RustBuildProfile,
     pub arch: TargetArchitecture,
 }
+
+impl RustBuildTarget {
+    pub fn builder_image_basename(&self) -> String {
+        format!(
+            "{}_build_{}-{}",
+            self.id.to_snake_name(),
+            self.arch,
+            self.profile,
+        )
+    }
+
+    pub fn runner_image_basename(&self) -> String {
+        format!(
+            "{}_build_{}-{}",
+            self.id.to_snake_name(),
+            self.arch,
+            self.profile,
+        )
+    }
+}
+
+#[derive(Clone)]
+pub enum RustTargetId {
+    Bin(String),
+    Example(String),
+}
+
 impl RustTargetId {
     pub fn to_cargo_arg(&self) -> String {
         match self {
@@ -106,44 +128,6 @@ impl RustTargetId {
             RustTargetId::Bin(name) => format!("{}_bin", name),
             RustTargetId::Example(name) => format!("{}_example", name),
         }
-    }
-}
-
-#[derive(Args)]
-pub struct RustBuildTargets {
-    #[arg(long, default_value = None)]
-    pub bin: Option<String>,
-    #[arg(long, default_value = None)]
-    pub example: Option<String>,
-    #[arg(long, default_value = "dev")]
-    pub profile: RustBuildProfile,
-    #[arg(long, default_value = "amd64")]
-    pub arch: TargetArchitecture,
-}
-
-impl IntoIterator for &RustBuildTargets {
-    type Item = RustBuildTarget;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        let mut v: Vec<Self::Item> = vec![];
-
-        if let Some(ref bin_name) = self.bin {
-            v.push(RustBuildTarget {
-                id: RustTargetId::Bin(bin_name.to_string()),
-                arch: self.arch,
-                profile: self.profile,
-            });
-        }
-        if let Some(ref example_name) = self.example {
-            v.push(RustBuildTarget {
-                id: RustTargetId::Example(example_name.to_string()),
-                arch: self.arch,
-                profile: self.profile,
-            });
-        }
-
-        v.into_iter()
     }
 }
 

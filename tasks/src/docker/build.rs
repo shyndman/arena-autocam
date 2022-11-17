@@ -5,14 +5,14 @@ use cargo_metadata::camino::Utf8PathBuf;
 use cmd_lib::run_cmd;
 
 use crate::{
-    cargo::{RustBuildProfile, RustBuildTargets, RustTargetId, TargetArchitecture},
+    cargo::{RustBuildProfile, RustBuildTarget, RustTargetId, TargetArchitecture},
     cmd::*,
-    ctx::BuildContext,
+    ctx::TaskContext,
+    docker::qualified_image_name,
 };
 
 const BUILDER_IMAGE_BASENAME: &str = "builder_base";
 const RUNNER_IMAGE_BASENAME: &str = "runner_base";
-const IMAGE_APP_COMPONENT: &str = "arena-autocam";
 const BUILDER_NAME: &str = "arena-autocam_builder";
 
 #[derive(Default)]
@@ -28,10 +28,7 @@ struct ImageBuildOptions {
 
 impl ImageBuildOptions {
     fn image_name_variants(&self, registry_url: &String) -> TargetImageNames {
-        let qualified_image_name = format!(
-            "{}/{}/{}",
-            registry_url, IMAGE_APP_COMPONENT, self.image_basename
-        );
+        let qualified_image_name = qualified_image_name(&self.image_basename, registry_url);
         TargetImageNames {
             image_name: qualified_image_name.clone(),
             tagged_image_name: format!("{}:latest", qualified_image_name),
@@ -47,11 +44,11 @@ struct TargetImageNames {
 }
 
 /// Builds the specified Docker image, and returns the image name as a [`String`].
-fn build_image(options: ImageBuildOptions, context: &BuildContext) -> Result<String> {
-    build_builder_if_required(None, context)?;
+fn build_image(options: ImageBuildOptions, task_ctx: &TaskContext) -> Result<String> {
+    build_builder_if_required(None, task_ctx)?;
 
-    let docker_repository_url = &context.docker_repository_url;
-    let docker_repository_ip = &context.docker_repository_ip;
+    let docker_repository_url = &task_ctx.docker_repository_host_port;
+    let docker_repository_ip = &task_ctx.docker_repository_ip;
 
     let TargetImageNames {
         image_name: _image_name,
@@ -83,7 +80,7 @@ fn build_image(options: ImageBuildOptions, context: &BuildContext) -> Result<Str
     let docker_platform_args = options.target_arch.map_or(vec![], |arch| {
         arch.docker_platform().into_cmd_arg("platform")
     });
-    let cache_args: Vec<String> = if context.is_build_cache_enabled() {
+    let cache_args: Vec<String> = if task_ctx.is_build_cache_enabled() {
         vec![
             format!(
                 "--cache-from=type=registry,ref={cache_name}",
@@ -152,68 +149,55 @@ fn pkg_config_build_arg_for_arch(arch: TargetArchitecture) -> Vec<String> {
     }
 }
 
-pub fn build_images_for_targets(
-    targets: &RustBuildTargets,
-    context: &BuildContext,
-) -> Result<()> {
+pub fn build_image_for_target(
+    target: &RustBuildTarget,
+    task_ctx: &TaskContext,
+) -> Result<String> {
     // Build the pre-build-io image, which is expensive, but almost always cached.
     build_image(
         ImageBuildOptions {
-            image_basename: format!("pre_build_io_{}", targets.arch.to_string()),
+            image_basename: format!("pre_build_io_{}", target.arch.to_string()),
             dockerfile_path: "docker/2.pre-build-io.dockerfile".into(),
-            docker_context_path: context.workspace_root_path.clone(),
-            target_arch: Some(targets.arch),
-            rust_profile: targets.profile,
+            docker_context_path: task_ctx.workspace_root_path.clone(),
+            target_arch: Some(target.arch),
             ..Default::default()
         },
-        context,
+        task_ctx,
     )?;
 
-    for target in targets.into_iter() {
-        // Build the image that builds the binary
-        let build_image_name = build_image(
-            ImageBuildOptions {
-                image_basename: format!(
-                    "{}_build_{}",
-                    target.id.to_snake_name(),
-                    target.arch.to_string()
-                ),
-                dockerfile_path: "docker/3.build-rust-target.dockerfile".into(),
-                docker_context_path: context.workspace_root_path.clone(),
-                target_arch: Some(target.arch),
-                rust_profile: target.profile,
-                rust_build_target: Some(target.id.clone()),
-                ..Default::default()
-            },
-            context,
-        )?;
+    // Build the image that builds the binary
+    let build_image_name = build_image(
+        ImageBuildOptions {
+            image_basename: target.builder_image_basename(),
+            dockerfile_path: "docker/3.build-rust-target.dockerfile".into(),
+            docker_context_path: task_ctx.workspace_root_path.clone(),
+            target_arch: Some(target.arch),
+            rust_profile: target.profile,
+            rust_build_target: Some(target.id.clone()),
+            ..Default::default()
+        },
+        task_ctx,
+    )?;
 
-        // Build the binary that runs the binary
-        let mut additional_build_args = HashMap::default();
-        additional_build_args.insert("DOCKER_BUILD_BIN_IMAGE", build_image_name);
+    // Build the binary that runs the binary
+    let mut additional_build_args = HashMap::default();
+    additional_build_args.insert("DOCKER_BUILD_BIN_IMAGE", build_image_name);
 
-        build_image(
-            ImageBuildOptions {
-                image_basename: format!(
-                    "{}_run_{}",
-                    target.id.to_snake_name(),
-                    target.arch.to_string()
-                ),
-                dockerfile_path: "docker/5.run-binary.dockerfile".into(),
-                docker_context_path: context.workspace_root_path.clone(),
-                target_arch: Some(target.arch),
-                rust_profile: target.profile,
-                additional_build_args: Some(additional_build_args),
-                ..Default::default()
-            },
-            context,
-        )?;
-    }
-
-    Ok(())
+    build_image(
+        ImageBuildOptions {
+            image_basename: target.runner_image_basename(),
+            dockerfile_path: "docker/5.run-binary.dockerfile".into(),
+            docker_context_path: task_ctx.workspace_root_path.clone(),
+            target_arch: Some(target.arch),
+            rust_profile: target.profile,
+            additional_build_args: Some(additional_build_args),
+            ..Default::default()
+        },
+        task_ctx,
+    )
 }
 
-pub fn build_base_builder_images(context: &BuildContext) -> Result<()> {
+pub fn build_base_builder_images(task_ctx: &TaskContext) -> Result<()> {
     // Build the base build image
     build_image(
         ImageBuildOptions {
@@ -222,7 +206,7 @@ pub fn build_base_builder_images(context: &BuildContext) -> Result<()> {
             docker_context_path: "docker".into(),
             ..Default::default()
         },
-        context,
+        task_ctx,
     )?;
 
     // Build the arch-specific build bases
@@ -235,7 +219,7 @@ pub fn build_base_builder_images(context: &BuildContext) -> Result<()> {
                 target_arch: Some(arch),
                 ..Default::default()
             },
-            context,
+            task_ctx,
         )?;
     }
 
@@ -263,14 +247,14 @@ pub fn build_base_builder_images(context: &BuildContext) -> Result<()> {
                 additional_build_args: Some(additional_build_args),
                 ..Default::default()
             },
-            context,
+            task_ctx,
         )?;
     }
 
     Ok(())
 }
 
-pub fn build_base_runner_images(context: &BuildContext) -> Result<()> {
+pub fn build_base_runner_images(task_ctx: &TaskContext) -> Result<()> {
     // Build the arch-specific runner bases
     for arch in TargetArchitecture::values() {
         let mut additional_build_args = HashMap::new();
@@ -295,14 +279,14 @@ pub fn build_base_runner_images(context: &BuildContext) -> Result<()> {
                 additional_build_args: Some(additional_build_args),
                 ..Default::default()
             },
-            context,
+            task_ctx,
         )?;
     }
 
     Ok(())
 }
 
-pub fn build_builder_if_required(force: Option<bool>, context: &BuildContext) -> Result<()> {
+pub fn build_builder_if_required(force: Option<bool>, task_ctx: &TaskContext) -> Result<()> {
     // The caller can force the creation of a builder (which we implement by
     // destroying it first)
     if let Some(true) = force {
@@ -310,7 +294,7 @@ pub fn build_builder_if_required(force: Option<bool>, context: &BuildContext) ->
             docker buildx rm $BUILDER_NAME
         )?;
     }
-    let workspace_root_path = &context.workspace_root_path;
+    let workspace_root_path = &task_ctx.workspace_root_path;
 
     // This command will fail if no builder exists with that name
     let builder_not_found = run_cmd!(docker buildx use $BUILDER_NAME).is_err();
