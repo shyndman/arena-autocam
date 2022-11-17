@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# Finds a Rust binary artifact based on environment variables provided by
+# docker, and copies it to /root/output/run
+
 import os
 import shutil
 from pathlib import Path
@@ -15,8 +18,8 @@ if build_target_type == "example":
 else:
     artifact_path = artifact_dir / f"{build_target_name}"
 
-output_dir = Path("../output")
+output_dir = Path("/root/output")
 output_dir.mkdir(parents=True)
-output_path = output_dir / build_target_name
+output_path = output_dir / "run"
 
 shutil.copy(artifact_path, output_path)

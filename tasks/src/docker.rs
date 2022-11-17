@@ -145,7 +145,7 @@ fn build_image_for_target(target: RustBuildTarget, context: &BuildContext) -> Re
     let dockerfile_path = [
         &context.workspace_root_path.as_str(),
         "docker",
-        "3.build-single-target.dockerfile",
+        "3.build-rust-target.dockerfile",
     ]
     .iter()
     .collect();

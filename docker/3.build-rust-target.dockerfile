@@ -33,7 +33,7 @@ RUN --mount=type=cache,target=/root/.cargo/git,sharing=shared \
           ${RUST_BUILD_TARGET}"
 
 FROM pre_build AS extract_artifacts
-COPY docker/include/extract_build_artifact.py ./extract_build_artifact.py
-RUN chmod +x extract_build_artifact.py
+COPY docker/include/extract_binary_artifact.py ./extract_binary_artifact.py
+RUN chmod +x extract_binary_artifact.py
 RUN --mount=type=cache,target=/root/build/target,sharing=shared \
-    ./extract_build_artifact.py
+    ./extract_binary_artifact.py
