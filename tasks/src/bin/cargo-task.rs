@@ -2,7 +2,7 @@ use anyhow::Result;
 use cargo_task::{
     cargo::{workspace_path, RustBuildTargets},
     ctx::BuildContext,
-    docker::{build_base_images, build_images_for_targets},
+    docker::{build_base_builder_images, build_base_runner_images, build_images_for_targets},
 };
 use clap::{Parser, Subcommand};
 use dns_lookup::lookup_host;
@@ -22,7 +22,9 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Generates the base builder docker images
-    BuildBaseImages,
+    BuildBaseBuilderImages,
+    /// Generates the base runner docker images
+    BuildBaseRunnerImages,
     BuildImage(RustBuildTargets),
 }
 
@@ -50,7 +52,8 @@ fn main() -> Result<()> {
     debug!("Build context created: {:#?}", context);
 
     match &cli.command {
-        Commands::BuildBaseImages => build_base_images(&context),
+        Commands::BuildBaseBuilderImages => build_base_builder_images(&context),
+        Commands::BuildBaseRunnerImages => build_base_runner_images(&context),
         Commands::BuildImage(targets) => build_images_for_targets(targets, &context),
     }
 }

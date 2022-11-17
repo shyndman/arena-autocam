@@ -1,15 +1,17 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 use cargo_metadata::camino::Utf8PathBuf;
 use cmd_lib::run_cmd;
 
 use crate::{
-    cargo::{
-        RustBuildProfile, RustBuildTarget, RustBuildTargets, RustTargetId, TargetArchitecture,
-    },
+    cargo::{RustBuildProfile, RustBuildTargets, RustTargetId, TargetArchitecture},
     cmd::*,
     ctx::BuildContext,
 };
 
+const BUILDER_IMAGE_BASENAME: &str = "builder_base";
+const RUNNER_IMAGE_BASENAME: &str = "runner_base";
 const IMAGE_APP_COMPONENT: &str = "arena-autocam";
 const BUILDER_NAME: &str = "arena-autocam_builder";
 
@@ -21,6 +23,7 @@ struct ImageBuildOptions {
     target_arch: Option<TargetArchitecture>,
     rust_build_target: Option<RustTargetId>,
     rust_profile: RustBuildProfile,
+    additional_build_args: Option<HashMap<&'static str, String>>,
 }
 
 impl ImageBuildOptions {
@@ -43,7 +46,10 @@ struct TargetImageNames {
     build_cache_image_name: String,
 }
 
-fn build_image(options: ImageBuildOptions, context: &BuildContext) -> Result<()> {
+/// Builds the specified Docker image, and returns the image name as a [`String`].
+fn build_image(options: ImageBuildOptions, context: &BuildContext) -> Result<String> {
+    build_builder_if_required(None, context)?;
+
     let docker_repository_url = &context.docker_repository_url;
     let docker_repository_ip = &context.docker_repository_ip;
 
@@ -91,6 +97,12 @@ fn build_image(options: ImageBuildOptions, context: &BuildContext) -> Result<()>
     } else {
         vec!["--no-cache=true".into()]
     };
+    let additional_build_args = options.additional_build_args.map_or(vec![], |build_args| {
+        build_args
+            .iter()
+            .flat_map(|(k, v)| v.into_docker_build_arg(k))
+            .collect()
+    });
 
     // Build the image, and push it to the
     run_cmd! (
@@ -112,6 +124,7 @@ fn build_image(options: ImageBuildOptions, context: &BuildContext) -> Result<()>
             $[rust_pkg_config_args]
             $[rust_profile_dir_args]
             $[docker_target_arch_args]
+            $[additional_build_args]
             --tag=$tagged_image_name
             --output type=image,push=true
             $docker_context_path
@@ -119,7 +132,7 @@ fn build_image(options: ImageBuildOptions, context: &BuildContext) -> Result<()>
 
     run_cmd!(docker --log-level=info image pull $tagged_image_name)?;
 
-    Ok(())
+    Ok(tagged_image_name)
 }
 
 fn pkg_config_build_arg_for_arch(arch: TargetArchitecture) -> Vec<String> {
@@ -139,35 +152,6 @@ fn pkg_config_build_arg_for_arch(arch: TargetArchitecture) -> Vec<String> {
     }
 }
 
-fn build_image_for_target(target: RustBuildTarget, context: &BuildContext) -> Result<()> {
-    build_builder_if_required(None, context)?;
-
-    let dockerfile_path = [
-        &context.workspace_root_path.as_str(),
-        "docker",
-        "3.build-rust-target.dockerfile",
-    ]
-    .iter()
-    .collect();
-    build_image(
-        ImageBuildOptions {
-            image_basename: format!(
-                "{}_build_{}",
-                target.id.to_snake_name(),
-                target.arch.to_string()
-            ),
-            dockerfile_path: dockerfile_path,
-            docker_context_path: context.workspace_root_path.clone(),
-            target_arch: Some(target.arch),
-            rust_profile: target.profile,
-            rust_build_target: Some(target.id),
-        },
-        context,
-    )?;
-
-    Ok(())
-}
-
 pub fn build_images_for_targets(
     targets: &RustBuildTargets,
     context: &BuildContext,
@@ -185,19 +169,55 @@ pub fn build_images_for_targets(
         context,
     )?;
 
-    for t in targets.into_iter() {
-        build_image_for_target(t, context)?
+    for target in targets.into_iter() {
+        // Build the image that builds the binary
+        let build_image_name = build_image(
+            ImageBuildOptions {
+                image_basename: format!(
+                    "{}_build_{}",
+                    target.id.to_snake_name(),
+                    target.arch.to_string()
+                ),
+                dockerfile_path: "docker/3.build-rust-target.dockerfile".into(),
+                docker_context_path: context.workspace_root_path.clone(),
+                target_arch: Some(target.arch),
+                rust_profile: target.profile,
+                rust_build_target: Some(target.id.clone()),
+                ..Default::default()
+            },
+            context,
+        )?;
+
+        // Build the binary that runs the binary
+        let mut additional_build_args = HashMap::default();
+        additional_build_args.insert("DOCKER_BUILD_BIN_IMAGE", build_image_name);
+
+        build_image(
+            ImageBuildOptions {
+                image_basename: format!(
+                    "{}_run_{}",
+                    target.id.to_snake_name(),
+                    target.arch.to_string()
+                ),
+                dockerfile_path: "docker/5.run-binary.dockerfile".into(),
+                docker_context_path: context.workspace_root_path.clone(),
+                target_arch: Some(target.arch),
+                rust_profile: target.profile,
+                additional_build_args: Some(additional_build_args),
+                ..Default::default()
+            },
+            context,
+        )?;
     }
 
     Ok(())
 }
 
-pub fn build_base_images(context: &BuildContext) -> Result<()> {
+pub fn build_base_builder_images(context: &BuildContext) -> Result<()> {
     // Build the base build image
-    let image_basename = "builder_base";
     build_image(
         ImageBuildOptions {
-            image_basename: image_basename.into(),
+            image_basename: BUILDER_IMAGE_BASENAME.into(),
             dockerfile_path: "docker/0.builder-base.dockerfile".into(),
             docker_context_path: "docker".into(),
             ..Default::default()
@@ -209,10 +229,70 @@ pub fn build_base_images(context: &BuildContext) -> Result<()> {
     for arch in TargetArchitecture::values() {
         build_image(
             ImageBuildOptions {
-                image_basename: format!("{}_{}", image_basename, arch),
+                image_basename: format!("{}_{}", BUILDER_IMAGE_BASENAME, arch),
                 dockerfile_path: format!("docker/1.builder-base.{}.dockerfile", arch).into(),
                 docker_context_path: "docker".into(),
                 target_arch: Some(arch),
+                ..Default::default()
+            },
+            context,
+        )?;
+    }
+
+    // Build the arch-specific runner bases
+    for arch in TargetArchitecture::values() {
+        let mut additional_build_args = HashMap::new();
+        additional_build_args.insert(
+            "DOCKER_BASE_RUN_IMAGE",
+            match arch {
+                TargetArchitecture::Amd64 => {
+                    "balenalib/amd64-debian:bookworm-build".to_string()
+                }
+                TargetArchitecture::Aarch64 => {
+                    "balenalib/raspberrypi4-64-debian:bookworm-run".to_string()
+                }
+            },
+        );
+
+        build_image(
+            ImageBuildOptions {
+                image_basename: format!("{}_{}", RUNNER_IMAGE_BASENAME, arch),
+                dockerfile_path: "docker/4.runner-base.dockerfile".into(),
+                docker_context_path: "docker".into(),
+                target_arch: Some(arch),
+                additional_build_args: Some(additional_build_args),
+                ..Default::default()
+            },
+            context,
+        )?;
+    }
+
+    Ok(())
+}
+
+pub fn build_base_runner_images(context: &BuildContext) -> Result<()> {
+    // Build the arch-specific runner bases
+    for arch in TargetArchitecture::values() {
+        let mut additional_build_args = HashMap::new();
+        additional_build_args.insert(
+            "DOCKER_BASE_RUN_IMAGE",
+            match arch {
+                TargetArchitecture::Amd64 => {
+                    "balenalib/amd64-debian:bookworm-build".to_string()
+                }
+                TargetArchitecture::Aarch64 => {
+                    "balenalib/raspberrypi4-64-debian:bookworm-run".to_string()
+                }
+            },
+        );
+
+        build_image(
+            ImageBuildOptions {
+                image_basename: format!("{}_{}", RUNNER_IMAGE_BASENAME, arch),
+                dockerfile_path: "docker/4.runner-base.dockerfile".into(),
+                docker_context_path: "docker".into(),
+                target_arch: Some(arch),
+                additional_build_args: Some(additional_build_args),
                 ..Default::default()
             },
             context,

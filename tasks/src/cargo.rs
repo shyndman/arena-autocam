@@ -83,6 +83,7 @@ impl Default for TargetArchitecture {
     }
 }
 
+#[derive(Clone)]
 pub enum RustTargetId {
     Bin(String),
     Example(String),
