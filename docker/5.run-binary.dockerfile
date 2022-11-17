@@ -18,6 +18,10 @@ FROM $DOCKER_BUILD_BIN_IMAGE AS builder
 FROM $DOCKER_REPO/arena-autocam/runner_base_${DOCKER_TARGET_ARCH}:latest AS runner
 WORKDIR /app
 
+# This, along with running the container in privileged mode, ensures that the
+# container can access devices (like the camera and GPIO pins)
+ENV UDEV=true
+
 # Copy the binary out of the builder image
 COPY --from=builder /root/output/run ./run
 
