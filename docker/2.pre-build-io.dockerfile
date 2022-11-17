@@ -1,18 +1,20 @@
 # syntax=docker/dockerfile:1
 
-# This is the base image for all builds, and is rebuilt each time a build is
-# requested, ideally performing very little work. It runs in the context of the
-# workspace root.
+# This image is created in the context of a build, and precedes the image that
+# builds a specific binary.
+#
+# It is rebuilt each time a build is requested, ideally performing very little
+# work due to caching. It runs in the context of the workspace root.
+
 ARG DOCKER_REPO
 ARG DOCKER_TARGET_ARCH
 FROM --platform=$BUILDPLATFORM $DOCKER_REPO/arena-autocam/builder_base_${DOCKER_TARGET_ARCH}:latest AS builder_base
 WORKDIR /root/build
 
-# Perform a search to force an index download
+# Perform an install to force an index download
 RUN --mount=type=cache,target=/root/.cargo/registry,sharing=shared \
     --mount=type=cache,target=/root/.cargo/git,sharing=shared \
-    ["/bin/zsh", "-c", "\
-        cargo install xargo"]
+    /bin/zsh -c 'cargo install xargo'
 
 # Copy all application files not covered by the root .dockerignore
 FROM builder_base AS source_copier

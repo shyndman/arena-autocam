@@ -1,5 +1,8 @@
 # syntax=docker/dockerfile:1
 
+# Builds a Rust target specified through environment variables. The resulting
+# binary is copied to /root/output/run
+
 # This should be run with a context of the workspace root
 ARG DOCKER_REPO
 ARG DOCKER_TARGET_ARCH
