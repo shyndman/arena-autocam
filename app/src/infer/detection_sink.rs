@@ -39,10 +39,10 @@ mod imp {
     use tflite_support::{BaseOptions, DetectionOptions, DetectionResult, ObjectDetector};
 
     use super::{CAT, DETECT_CAT};
-    use crate::logging::*;
     use crate::{
         foundation::geom::Rect,
         infer::tf_buffer_adapter::TensorflowBufferAdapter,
+        logging::*,
         message::{AAMessage, DetectionDetails},
     };
 

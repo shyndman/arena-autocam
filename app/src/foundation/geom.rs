@@ -36,8 +36,7 @@ impl Default for Rect {
 mod imp {
     use std::sync::Mutex;
 
-    use gst::glib::prelude::*;
-    use gst::subclass::prelude::*;
+    use gst::{glib::prelude::*, subclass::prelude::*};
     use once_cell::sync::Lazy;
 
     #[derive(Debug, Default)]

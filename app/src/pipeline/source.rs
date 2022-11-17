@@ -1,16 +1,17 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
-use glib::value::FromValue;
-use glib::{EnumClass, Type};
+use glib::{value::FromValue, EnumClass, Type};
 use gst::{element_warning, prelude::*, Caps, Fraction};
 use gst_app::prelude::BaseSrcExt;
 use gst_video::VideoCapsBuilder;
 
-use crate::config::Config;
-use crate::foundation::{gst::find_src_pad, path::to_canonicalized_path_string};
-use crate::logging::*;
-use crate::pipeline::CREATE_CAT as CAT;
+use crate::{
+    config::Config,
+    foundation::{gst::find_src_pad, path::to_canonicalized_path_string},
+    logging::*,
+    pipeline::CREATE_CAT as CAT,
+};
 
 pub(super) struct SourcePads {
     pub display_stream_src_pad: gst::Pad,
