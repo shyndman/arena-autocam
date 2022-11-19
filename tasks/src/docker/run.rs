@@ -37,6 +37,12 @@ pub fn run_image_for_targets(
     );
     let docker_context_arg = docker_ctx.map_or(vec![], |ctx| ctx.into_cmd_arg("context"));
 
+    // Ensure we correct dev permissions on an interrupt
+    ctrlc::set_handler(move || {
+        ensure_correct_dev_permissions().unwrap();
+    })
+    .expect("Error setting Ctrl-C handler");
+
     // Build the image, and push it to the
     run_cmd! (
         docker
@@ -49,11 +55,15 @@ pub fn run_image_for_targets(
             --pull=always
             $image_name
     )?;
+    ensure_correct_dev_permissions()?;
 
+    Ok(())
+}
+
+pub fn ensure_correct_dev_permissions() -> Result<()> {
     // TODO(shyndman): Are there cases where `docker run` will fail AFTER the permission
     // change has taken place?
     let mut perms = fs::metadata(PTMX_PATH)?.permissions();
     perms.set_mode(0o666);
-
     Ok(())
 }

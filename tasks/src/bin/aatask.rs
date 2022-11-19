@@ -6,7 +6,7 @@ use aa_task::{
     ctx::TaskContext,
     docker::{
         build_base_builder_images, build_base_runner_images, build_image_for_target,
-        run_image_for_targets,
+        ensure_correct_dev_permissions, run_image_for_targets,
     },
 };
 use anyhow::Result;
@@ -136,8 +136,6 @@ fn main() -> Result<()> {
         get_current_shell()?,
         cli.no_cache,
     );
-
-    // debug!("Build context created: {:#?}", task_ctx);
 
     match &cli.command {
         Commands::BuildBaseBuilderImages => build_base_builder_images(&task_ctx),
