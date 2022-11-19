@@ -1,24 +1,28 @@
-use anyhow::Result;
-use cargo_task::{
+use aa_task::{
     cargo::{
         workspace_path, RustBuildProfile, RustBuildTarget, RustTargetId, TargetArchitecture,
     },
+    cli::{generate_completion_script, get_current_shell},
     ctx::TaskContext,
     docker::{
         build_base_builder_images, build_base_runner_images, build_image_for_target,
         run_image_for_targets,
     },
 };
-use clap::{ArgGroup, Args, Parser, Subcommand};
+use anyhow::Result;
+use clap::{error::ErrorKind, ArgGroup, Args, CommandFactory, Parser, Subcommand};
+use clap_complete::Shell;
 use dns_lookup::lookup_host;
 use log::*;
 
 #[derive(Parser)]
-#[command(author, version, about, long_about = None)]
-#[command(propagate_version = true)]
+#[command(name="task", author, version, about, long_about = None, propagate_version = true)]
 struct Cli {
     #[arg(long, default_value_t = false)]
     no_cache: bool,
+
+    #[arg(long, default_value_t = false)]
+    quiet: bool,
 
     #[command(subcommand)]
     command: Commands,
@@ -78,26 +82,44 @@ impl RustBuildTargetOptions {
     }
 }
 
+#[derive(Args)]
+
+struct GenerateCompletionScriptOptions {
+    /// The name of the shell for which completions will be generated.
+    ///
+    /// If not provided, aatask will attempt to detect the type of the invoking shell.
+    shell: Option<Shell>,
+}
+
 #[derive(Subcommand)]
 enum Commands {
     /// Generates the base builder docker images
     BuildBaseBuilderImages,
     /// Generates the base runner docker images
     BuildBaseRunnerImages,
+    /// Builds a containerized Rust binary
     BuildImage(BuildImageOptions),
+    /// Runs a containerized Rust binary
     RunImage(RunImageOptions),
+    /// Generates a completion script for this utility
+    GenerateCompletionScript(GenerateCompletionScriptOptions),
 }
 
 fn main() -> Result<()> {
+    let cli = Cli::parse();
+    let log_level = if cli.quiet {
+        log::Level::Warn
+    } else {
+        log::Level::Debug
+    };
     env_logger::builder()
         .format_timestamp(None)
-        .filter_level(LevelFilter::Warn)
+        .filter_level(log_level.to_level_filter())
         // cmd_lib prints out run_cmd! command strings at debug, so that's where we set it
         .filter_module("cmd_lib::process", LevelFilter::Debug)
         .init();
     cmd_lib::set_debug(true);
 
-    let cli = Cli::parse();
     // TODO(shyndman): Change this to pull from the config, environment, or args...
     // something other than a hardcode
     let repository_host_port = "ubuntu-desktop.local:5000".into();
@@ -105,14 +127,17 @@ fn main() -> Result<()> {
         .first()
         .unwrap()
         .to_owned();
-    let task_ctx = TaskContext::new(
+
+    let mut task_ctx = TaskContext::new(
         repository_host_port,
         repository_ip,
         workspace_path()?,
+        Cli::command(),
+        get_current_shell()?,
         cli.no_cache,
     );
 
-    debug!("Build context created: {:#?}", task_ctx);
+    // debug!("Build context created: {:#?}", task_ctx);
 
     match &cli.command {
         Commands::BuildBaseBuilderImages => build_base_builder_images(&task_ctx),
@@ -130,5 +155,21 @@ fn main() -> Result<()> {
             *no_build,
             &task_ctx,
         ),
+        Commands::GenerateCompletionScript(GenerateCompletionScriptOptions {
+            shell: shell_arg,
+        }) => {
+            let Some(target_shell) = shell_arg.or(task_ctx.shell) else {
+                let err: clap::Error = task_ctx.command.error(
+                    ErrorKind::MissingRequiredArgument,
+                    "No invoking shell found. Please provide a SHELL arg"
+                );
+                err.exit();
+            };
+
+            let script = generate_completion_script(target_shell, &mut task_ctx)?;
+            println!("{}", script);
+
+            Ok(())
+        }
     }
 }

@@ -14,6 +14,8 @@ use crate::{
 /// will change the permissions on this device. On some OSes (Ubuntu is the only known)
 /// this prevents new terminals from being opened until the permissions are reset to
 /// 0666.
+///
+/// Related bug: https://github.com/balena-io-library/base-images/issues/597
 const PTMX_PATH: &str = "/dev/pts/ptmx";
 
 /// Run, and optionally build, a containerized Rust binary.

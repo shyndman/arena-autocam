@@ -7,7 +7,6 @@ and rider during video capture.
 
 * Git LFS
 * Rust nightly toolchain
-* dotenv-cli (`npm install --global dotenv-cli`)
 * docker-ce docker-ce-cli containerd.io docker-compose-plugin
   * Docker must be configured for cross-platform builds. [These
     instructions](https://medium.com/@artur.klauser/building-multi-architecture-docker-images-with-buildx-27d80f7e2408)
@@ -15,6 +14,7 @@ and rider during video capture.
     script](https://medium.com/@artur.klauser/building-multi-architecture-docker-images-with-buildx-27d80f7e2408#8e70)
     included on that page can be used to verify that the installation is
     correct.
+* (Optional) zsh-autoenv (https://github.com/Tarrasch/zsh-autoenv)
 
 ## Building the application
 
