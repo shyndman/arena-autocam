@@ -21,6 +21,7 @@ WORKDIR /app
 # This, along with running the container in privileged mode, ensures that the
 # container can access devices (like the camera and GPIO pins)
 ENV UDEV=true
+ENV RUST_BACKTRACE=1
 
 # Copy the binary out of the builder image
 COPY --from=builder /root/output/run ./run
