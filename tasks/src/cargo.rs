@@ -110,7 +110,7 @@ impl RustBuildTarget {
 
     pub fn runner_image_basename(&self) -> String {
         format!(
-            "{}_build_{}-{}",
+            "{}_run_{}-{}",
             self.id.to_snake_name(),
             self.arch,
             self.profile,
