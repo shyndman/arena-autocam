@@ -7,7 +7,15 @@ WORKDIR /root
 RUN --mount=type=cache,target=/var/cache/apt,sharing=shared \
     --mount=type=cache,target=/var/lib/apt,sharing=shared \
     apt-get update && \
-    apt-get --assume-yes --no-install-recommends install \
+    apt-get install wget; \
+    echo "deb [arch=amd64,arm64,armhf] http://deb.volian.org/volian/ scar main" | sudo tee /etc/apt/sources.list.d/volian-archive-scar-unstable.list; \
+    wget -qO - https://deb.volian.org/volian/scar.key | sudo tee /etc/apt/trusted.gpg.d/volian-archive-scar-unstable.gpg > /dev/null; \
+    apt-get update && apt-get install nala;
+COPY include/nala.conf /etc/nala/nala.conf
+RUN --mount=type=cache,target=/var/cache/apt,sharing=shared \
+    --mount=type=cache,target=/var/lib/apt,sharing=shared \
+    nala fetch --auto --fetches=2; \
+    nala install \
         bash \
         ca-certificates \
         curl \
@@ -15,7 +23,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=shared \
         libclang-dev \
         libssl-dev \
         lsb-release \
-        wget
+        software-properties-common;
 
 # ~~~~ ZSH SHELL SETUP
 FROM machine_base AS shell_setup

@@ -11,11 +11,6 @@ ARG DOCKER_TARGET_ARCH
 FROM --platform=$BUILDPLATFORM $DOCKER_REPO/arena-autocam/builder_base_${DOCKER_TARGET_ARCH}:latest AS builder_base
 WORKDIR /root/build
 
-# Perform an install to force an index download
-RUN --mount=type=cache,target=/root/.cargo/registry,sharing=shared \
-    --mount=type=cache,target=/root/.cargo/git,sharing=shared \
-    /bin/zsh -c 'cargo install xargo'
-
 # Copy all application files not covered by the root .dockerignore
 FROM builder_base AS source_copier
 COPY . .

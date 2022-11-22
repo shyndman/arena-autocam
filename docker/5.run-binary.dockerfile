@@ -18,6 +18,10 @@ FROM $DOCKER_BUILD_BIN_IMAGE AS builder
 FROM $DOCKER_REPO/arena-autocam/runner_base_${DOCKER_TARGET_ARCH}:latest AS runner
 WORKDIR /app
 
+# The name of the GCC toolchain, which also identifies where
+# architecture-specific files live in the build image
+ARG GCC_TOOLCHAIN
+
 # This, along with running the container in privileged mode, ensures that the
 # container can access devices (like the camera and GPIO pins)
 ENV UDEV=true

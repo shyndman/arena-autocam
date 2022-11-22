@@ -63,9 +63,18 @@ impl TargetArchitecture {
         .into()
     }
 
+    pub fn gcc_toolchain(&self) -> String {
+        match self {
+            TargetArchitecture::Amd64 => "x86_64-linux-gnu",
+            TargetArchitecture::Aarch64 => "aarch64-linux-gnu",
+        }
+        .into()
+    }
+
     pub fn docker_platform(&self) -> String {
         format!("linux/{}", self.to_string())
     }
+
 }
 
 impl Display for TargetArchitecture {

@@ -10,6 +10,12 @@
 ARG DOCKER_BASE_RUN_IMAGE
 FROM $DOCKER_BASE_RUN_IMAGE AS runner_base
 
+ARG DOCKER_TARGET_ARCH
 COPY include/install_runtime_dependencies.sh ./install_runtime_dependencies.sh
-RUN chmod +x ./install_runtime_dependencies.sh
-RUN ./install_runtime_dependencies.sh
+COPY include/install_runtime_dependencies.${DOCKER_TARGET_ARCH}.sh ./install_runtime_dependencies.$DOCKER_TARGET_ARCH.sh
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    chmod +x ./install_runtime_dependencies.sh ./install_runtime_dependencies.$DOCKER_TARGET_ARCH.sh && \
+    apt-get update && \
+    ./install_runtime_dependencies.sh && \
+    ./install_runtime_dependencies.$DOCKER_TARGET_ARCH.sh

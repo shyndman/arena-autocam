@@ -68,18 +68,17 @@ fn build_image(options: ImageBuildOptions, task_ctx: &TaskContext) -> Result<Str
         name.to_cargo_arg()
             .into_docker_build_arg("RUST_BUILD_TARGET")
     });
-    let rust_pkg_config_args = options
-        .target_arch
-        .map_or(vec![], |arch| pkg_config_build_arg_for_arch(arch));
-    let rust_target_args = options.target_arch.map_or(vec![], |arch| {
-        arch.rust_triple().into_docker_build_arg("RUST_TARGET")
+    let arch_derivative_args: Vec<String> = options.target_arch.map_or(vec![], |arch| {
+        vec![
+            pkg_config_build_arg_for_arch(arch),
+            arch.rust_triple().into_docker_build_arg("RUST_TARGET"),
+            arch.gcc_toolchain().into_docker_build_arg("GCC_TOOLCHAIN"),
+            arch.to_string().into_docker_build_arg("DOCKER_TARGET_ARCH"),
+            arch.docker_platform().into_cmd_arg("platform"),
+        ]
+        .concat()
     });
-    let docker_target_arch_args = options.target_arch.map_or(vec![], |arch| {
-        arch.to_string().into_docker_build_arg("DOCKER_TARGET_ARCH")
-    });
-    let docker_platform_args = options.target_arch.map_or(vec![], |arch| {
-        arch.docker_platform().into_cmd_arg("platform")
-    });
+
     let cache_args: Vec<String> = if task_ctx.is_build_cache_enabled() {
         vec![
             format!(
@@ -113,14 +112,11 @@ fn build_image(options: ImageBuildOptions, task_ctx: &TaskContext) -> Result<Str
             --progress=plain
             --file=$dockerfile_path
             // This is `--platform=linux/{arch}`, which may not be provided
-            $[docker_platform_args]
+            $[arch_derivative_args]
             --build-arg DOCKER_REPO=$docker_repository_url
             --build-arg RUST_PROFILE=$rust_profile
             $[rust_build_target]
-            $[rust_target_args]
-            $[rust_pkg_config_args]
             $[rust_profile_dir_args]
-            $[docker_target_arch_args]
             $[additional_build_args]
             --tag=$tagged_image_name
             --output type=image,push=true
