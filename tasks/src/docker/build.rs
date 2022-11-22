@@ -219,34 +219,6 @@ pub fn build_base_builder_images(task_ctx: &TaskContext) -> Result<()> {
         )?;
     }
 
-    // Build the arch-specific runner bases
-    for arch in TargetArchitecture::values() {
-        let mut additional_build_args = HashMap::new();
-        additional_build_args.insert(
-            "DOCKER_BASE_RUN_IMAGE",
-            match arch {
-                TargetArchitecture::Amd64 => {
-                    "balenalib/amd64-debian:bookworm-build".to_string()
-                }
-                TargetArchitecture::Aarch64 => {
-                    "balenalib/raspberrypi4-64-debian:bookworm-run".to_string()
-                }
-            },
-        );
-
-        build_image(
-            ImageBuildOptions {
-                image_basename: format!("{}_{}", RUNNER_IMAGE_BASENAME, arch),
-                dockerfile_path: "docker/4.runner-base.dockerfile".into(),
-                docker_context_path: "docker".into(),
-                target_arch: Some(arch),
-                additional_build_args: Some(additional_build_args),
-                ..Default::default()
-            },
-            task_ctx,
-        )?;
-    }
-
     Ok(())
 }
 
