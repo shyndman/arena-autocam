@@ -53,7 +53,7 @@ pub fn run_image_for_targets(
             --network=host
             --tty
             --pull=always
-            $image_name
+            $image_name:latest
     )?;
     ensure_correct_dev_permissions()?;
 
