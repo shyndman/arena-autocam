@@ -1,8 +1,6 @@
 use aa_hal::{
-    clock::timer::Timer,
-    prelude::*,
-    stepper::FloatDelayToTicks,
-    thread::{set_thread_as_realtime, sleep_nanos},
+    clock::timer::Timer, prelude::*, stepper::FloatDelayToTicks,
+    thread::set_thread_as_realtime,
 };
 use anyhow::{anyhow, Result};
 use rppal::gpio::Gpio;
@@ -45,34 +43,37 @@ fn main() -> Result<()> {
             FloatDelayToTicks,
         ));
 
-    for degs_per_second in (10..=30).map(|i| i as f32 * 4.0) {
-        let degs_per_tick = degs_per_second / RATE_1MHZ as f32;
-        info!("ROTATE AT {}°/s ({}°/tick)", degs_per_second, degs_per_tick);
-        let steps_per_tick = degs_per_tick / 2.0;
+    let reset_velocity = velocity_in_steps_per_tick(360.0);
+    for degs_per_second in (10..=30).map(|i| i as f32 * 6.0) {
+        let velocity = velocity_in_steps_per_tick(degs_per_second);
+        info!(
+            "ROTATE AT {:>3}°/s ({:.7} steps/tick)",
+            degs_per_second, velocity
+        );
 
         stepper
-            .set_direction(Direction::Forward, &mut timer)
+            .move_to_position(velocity, 60)
             .wait()
             .map_err(|e| anyhow!("{:?}", e))?;
-        stepper
-            .move_to_position(steps_per_tick, 30)
-            .wait()
-            .map_err(|e| anyhow!("{:?}", e))?;
-
-        info!("RESET");
-        sleep_nanos(100 * 1_000_000); // Sleep 100ms
 
         // Reset to original position
+
         stepper
-            .set_direction(Direction::Backward, &mut timer)
-            .wait()
-            .map_err(|e| anyhow!("{:?}", e))?;
-        sleep_nanos(2 * 1_000); // Sleep 2µs
-        stepper
-            .move_to_position(steps_per_tick, 0)
+            .move_to_position(reset_velocity, 0)
             .wait()
             .map_err(|e| anyhow!("{:?}", e))?;
     }
 
     Ok(())
+}
+
+fn velocity_in_steps_per_tick(degrees_per_second: f32) -> f32 {
+    let degrees_per_tick = degrees_per_second / RATE_1MHZ as f32;
+    degrees_to_steps(degrees_per_tick)
+}
+
+const DEGREES_PER_STEP: f32 = 360.0 / 200.0;
+
+fn degrees_to_steps(degrees: f32) -> f32 {
+    degrees / DEGREES_PER_STEP
 }
