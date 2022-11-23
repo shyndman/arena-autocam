@@ -1,2 +1,2 @@
 #[allow(unused_imports)]
-pub use log::{debug, error, info, log, trace, warn};
+pub use tracing::{debug, error, info, trace, warn};

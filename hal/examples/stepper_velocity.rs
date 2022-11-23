@@ -5,17 +5,17 @@ use aa_hal::{
 use anyhow::{anyhow, Result};
 use rppal::gpio::Gpio;
 use stepper::{drivers::a4988::A4988, ramp_maker, step_mode::StepMode16, Direction, Stepper};
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 const RATE_1MHZ: u32 = 1_000_000;
 
 fn main() -> Result<()> {
-    set_thread_as_realtime();
-
-    env_logger::builder()
-        .format_timestamp(None)
-        .filter_level(log::LevelFilter::Info)
-        .format_target(false)
+    tracing_subscriber::registry()
+        .with(fmt::layer().compact().with_file(false).without_time())
+        .with(EnvFilter::from_default_env())
         .init();
+
+    set_thread_as_realtime();
 
     let gpio = Gpio::new()?;
     let step_pin = gpio.get(20)?.into_output();
