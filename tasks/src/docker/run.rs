@@ -1,4 +1,4 @@
-use std::{fs, os::unix::prelude::PermissionsExt};
+use std::{env, fs, os::unix::prelude::PermissionsExt};
 
 use anyhow::Result;
 use cmd_lib::run_cmd;
@@ -44,6 +44,15 @@ pub fn run_image_for_targets(
         .args(docker_context_arg.into_iter())
         .arg("run")
         .args([
+            // RUST_LOG
+            "--env",
+            format!(
+                "RUST_LOG={}",
+                env::var("RUST_LOG")
+                    .map(|s| s.to_string())
+                    .unwrap_or("info".into())
+            )
+            .as_str(),
             // Privileged is necessary so that the host's devices are accessible
             "--privileged",
             // Use host networking, so that the private docker repository is accessible
