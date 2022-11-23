@@ -6,7 +6,7 @@ use aa_task::{
     ctx::TaskContext,
     docker::{
         build_base_builder_images, build_base_runner_images, build_image_for_target,
-        ensure_correct_dev_permissions, run_image_for_targets,
+        run_image_for_targets,
     },
 };
 use anyhow::Result;

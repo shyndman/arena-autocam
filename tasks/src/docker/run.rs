@@ -2,6 +2,7 @@ use std::{fs, os::unix::prelude::PermissionsExt};
 
 use anyhow::Result;
 use cmd_lib::run_cmd;
+use log::info;
 
 use crate::{
     cargo::RustBuildTarget,
@@ -37,30 +38,43 @@ pub fn run_image_for_targets(
     );
     let docker_context_arg = docker_ctx.map_or(vec![], |ctx| ctx.into_cmd_arg("context"));
 
-    // Ensure we correct dev permissions on an interrupt
+    let mut docker_run_cmd = std::process::Command::new("docker");
+    let child = docker_run_cmd
+        .arg("--log-level=info")
+        .args(docker_context_arg.into_iter())
+        .arg("run")
+        .args([
+            "--privileged",
+            "--network=host",
+            "--tty",
+            // "--interactive",
+            "--init",
+            "--rm",
+            "--pull=always",
+            format!("{}:latest", image_name).as_str(),
+        ])
+        .spawn();
+
+    let child_id = child.as_ref().ok().map(|c| c.id());
     ctrlc::set_handler(move || {
-        ensure_correct_dev_permissions().unwrap();
+        if let Some(child_id) = child_id {
+            run_cmd!(kill $child_id).ok();
+        }
     })
     .expect("Error setting Ctrl-C handler");
 
-    // Build the image, and push it to the
-    run_cmd! (
-        docker
-            --log-level=info
-            $[docker_context_arg]
-        run
-            --privileged
-            --network=host
-            --tty
-            --pull=always
-            $image_name:latest
-    )?;
+    // Wait for run to finish, immediately fixing dev permissions if the container
+    // mangled them.
+    let wait_res = child?.wait();
     ensure_correct_dev_permissions()?;
 
+    wait_res?;
     Ok(())
 }
 
 pub fn ensure_correct_dev_permissions() -> Result<()> {
+    info!("Restoring ptmx permissions if necessary");
+
     // TODO(shyndman): Are there cases where `docker run` will fail AFTER the permission
     // change has taken place?
     let mut perms = fs::metadata(PTMX_PATH)?.permissions();
