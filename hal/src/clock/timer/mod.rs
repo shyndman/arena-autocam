@@ -2,6 +2,7 @@ use std::time;
 
 use anyhow::anyhow;
 use fugit::RateExtU32;
+use log::Level;
 
 use crate::{clock::get_time_ns, prelude::*, thread::sleep_nanos};
 
@@ -98,7 +99,14 @@ impl<const TIMER_HZ: u32> fugit_timer::Timer<TIMER_HZ> for Timer<TIMER_HZ> {
         }
 
         let done_elapsed = self.elapsed_ns();
-        info!(
+        let diff = if done_elapsed > duration {
+            (done_elapsed - duration) as i64
+        } else {
+            -((duration - done_elapsed) as i64)
+        } / 1000;
+        let level = if diff > 100 { Level::Warn } else { Level::Info };
+        log!(
+            level,
             "waited {}µs, intended duration {}µs ({:+}µs)",
             done_elapsed / 1000,
             duration / 1000,

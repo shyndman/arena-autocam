@@ -32,13 +32,10 @@ fn main() -> Result<()> {
     let profile = ramp_maker::Flat::<f32>::new();
     let mut motion_ctrl =
         stepper.enable_motion_control((timer.clone(), profile, FloatDelayToTicks));
-    for degrees_per_second in (1..=20).map(|i| i as f32 * 5.0) {
-        let degrees_per_tick = degrees_per_second / RATE_1MHZ as f32;
-        info!(
-            "ROTATE AT {}°/s ({}°/tick)",
-            degrees_per_second, degrees_per_tick
-        );
-        let steps_per_tick = degrees_per_tick / 2.0;
+    for degs_per_second in (1..=20).map(|i| i as f32 * 5.0) {
+        let degs_per_tick = degs_per_second / RATE_1MHZ as f32;
+        info!("ROTATE AT {}°/s ({}°/tick)", degs_per_second, degs_per_tick);
+        let steps_per_tick = degs_per_tick / 2.0;
 
         motion_ctrl
             .set_direction(Direction::Forward, &mut timer)
