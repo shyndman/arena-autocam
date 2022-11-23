@@ -8,12 +8,12 @@ const SLEEP_THRESHOLD: u64 = 250_000;
 const BUSYWAIT_MAX: u64 = 200_000;
 const BUSYWAIT_REMAINDER: i64 = 100;
 
-/// Sleeps for `duration` as accurately as possible.
+/// Sleeps for `duration_ns` as accurately as possible.
 ///
 /// For best results, ensure the calling thread is using realtime priority, via
 /// [`set_thread_as_realtime`].
 #[inline(always)]
-pub fn sleep(duration_ns: u64) -> i64 {
+pub fn sleep_nanos(duration_ns: u64) -> i64 {
     let start_ns = get_time_ns();
 
     // Sleep if we have enough time remaining, while reserving some time

@@ -74,7 +74,6 @@ impl TargetArchitecture {
     pub fn docker_platform(&self) -> String {
         format!("linux/{}", self.to_string())
     }
-
 }
 
 impl Display for TargetArchitecture {

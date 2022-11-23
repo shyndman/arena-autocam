@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use aa_hal::{
     clock::get_time_ns,
-    thread::{set_thread_as_realtime, sleep},
+    thread::{set_thread_as_realtime, sleep_nanos},
 };
 use num_format::{CustomFormat, ToFormattedString};
 
@@ -54,7 +54,7 @@ fn run_sleeps() {
     for d in SLEEP_DURATIONS {
         let s_ns = d.as_nanos() as u64;
         let start_ns = get_time_ns();
-        let r_ns: i64 = sleep(s_ns);
+        let r_ns: i64 = sleep_nanos(s_ns);
         let d_ns = get_time_ns() - start_ns;
         eprintln!("sleep {}ns", s_ns.to_formatted_string(&fmt));
         eprintln!(
