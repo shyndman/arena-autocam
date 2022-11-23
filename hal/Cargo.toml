@@ -18,7 +18,6 @@ num-format = "0.4.3"
 num-traits = "0.2.15"
 ramp-maker = { version = "0.2.0", features = ["std"] }
 rppal = { version = "0.14", features = ["hal"] }
-rust-pigpio = { git = "https://github.com/shyndman/rust_pigpio" }
 smart-leds = "0.3.0"
-stepper = { git = "https://github.com/shyndman/hal-stepper", features = ["a4988"]}
+stepper = { git = "https://github.com/shyndman/hal-stepper", features = ["a4988"] }
 typenum = "1.15.0"
