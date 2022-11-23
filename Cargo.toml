@@ -1,2 +1,2 @@
 [workspace]
-members = ["app", "hal", "scratch", "tasks", "tflite_support"]
+members = ["app", "foundation", "hal", "scratch", "tasks", "tflite_support"]

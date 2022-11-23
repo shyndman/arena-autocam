@@ -5,6 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
+aa-foundation = { path = "../foundation" }
 anyhow = "1.0.66"
 embedded-hal = "1.0.0-alpha.9"
 fixed = "1.20.0"
@@ -15,13 +16,15 @@ nb = "1.0.0"
 num-format = "0.4.3"
 num-traits = "0.2.15"
 ramp-maker = { version = "0.2.0", features = ["std"] }
+rand = "0.8.5"
+replace_with = "0.1.7"
 rppal = { version = "0.14", features = ["hal"] }
+signal-hook = "0.3.14"
 smart-leds = "0.3.0"
-stepper = { git = "https://github.com/shyndman/hal-stepper", branch = "tracing", features = [
-  "a4988",
-] }
 tracing = "0.1"
 typenum = "1.15.0"
 
-[dev-dependencies]
-tracing-subscriber = { version = "0.3.16", features = ["registry", "std", "env-filter"] }
+[dependencies.stepper]
+git = "https://github.com/shyndman/hal-stepper"
+branch = "sleep-mode"
+features = ["a4988"]

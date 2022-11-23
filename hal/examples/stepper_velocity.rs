@@ -1,32 +1,29 @@
+use aa_foundation::prelude::*;
 use aa_hal::{
-    clock::timer::Timer, prelude::*, stepper::FloatDelayToTicks,
+    clock::timer::Timer,
+    stepper::{get_stepper_pins, FloatDelayToTicks, StepperPins},
     thread::set_thread_as_realtime,
 };
 use anyhow::{anyhow, Result};
-use rppal::gpio::Gpio;
 use stepper::{drivers::a4988::A4988, ramp_maker, step_mode::StepMode16, Direction, Stepper};
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 const RATE_1MHZ: u32 = 1_000_000;
 
 fn main() -> Result<()> {
-    tracing_subscriber::registry()
-        .with(fmt::layer().compact().with_file(false).without_time())
-        .with(EnvFilter::from_default_env())
-        .init();
-
+    aa_foundation::tracing::setup_dev_tracing_subscriber();
     set_thread_as_realtime();
 
-    let gpio = Gpio::new()?;
-    let step_pin = gpio.get(20)?.into_output();
-    let direction_pin = gpio.get(21)?.into_output();
+    let StepperPins {
+        ms1_pin,
+        ms2_pin,
+        ms3_pin,
+        reset_pin,
+        sleep_pin: _,
+        step_pin,
+        direction_pin,
+    } = get_stepper_pins()?;
 
-    let reset_pin = gpio.get(16)?.into_output();
-    let ms1_pin = gpio.get(26)?.into_output();
-    let ms2_pin = gpio.get(19)?.into_output();
-    let ms3_pin = gpio.get(13)?.into_output();
-
-    let mut timer = Timer::<RATE_1MHZ>::new_blocking();
+    let mut timer = Timer::<RATE_1MHZ>::new_non_blocking();
     let mut stepper = Stepper::from_driver(A4988::new())
         .enable_direction_control(direction_pin, Direction::Forward, &mut timer)
         .map_err(|e| anyhow!("{:?}", e))?
@@ -44,7 +41,7 @@ fn main() -> Result<()> {
         ));
 
     let reset_velocity = velocity_in_steps_per_tick(360.0);
-    for degs_per_second in (10..=30).map(|i| i as f32 * 6.0) {
+    for degs_per_second in (10..=40).map(|i| i as f32 * 40.0) {
         let velocity = velocity_in_steps_per_tick(degs_per_second);
         info!(
             "ROTATE AT {:>3}°/s ({:.7} steps/tick)",
@@ -52,7 +49,7 @@ fn main() -> Result<()> {
         );
 
         stepper
-            .move_to_position(velocity, 60)
+            .move_to_position(velocity, 200)
             .wait()
             .map_err(|e| anyhow!("{:?}", e))?;
 

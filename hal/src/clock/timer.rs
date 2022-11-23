@@ -1,9 +1,10 @@
 use std::time;
 
+use aa_foundation::prelude::*;
 use anyhow::anyhow;
 use fugit::RateExtU32;
 
-use crate::{clock::get_time_ns, prelude::*, thread::sleep_nanos};
+use crate::{clock::get_time_ns, thread::sleep_nanos};
 
 #[derive(Clone)]
 pub struct Timer<const TIMER_HZ: u32> {
@@ -85,12 +86,12 @@ impl<const TIMER_HZ: u32> fugit_timer::Timer<TIMER_HZ> for Timer<TIMER_HZ> {
             return Err(nb::Error::Other(anyhow!("Timer was already canceled")));
         }
 
-        let duration = self.duration.to_nanos() as u64;
+        let duration = self.duration.to_nanos().max(1000) as u64;
         let elapsed = self.elapsed_ns();
         if elapsed < duration {
             if self.blocking {
                 let remaining = duration - elapsed;
-                debug!("sleeping for {}µs", remaining / 1000);
+                trace!("sleeping for {}µs", remaining / 1000);
                 sleep_nanos(remaining);
             } else {
                 return nb::Result::Err(nb::Error::WouldBlock);
@@ -103,9 +104,10 @@ impl<const TIMER_HZ: u32> fugit_timer::Timer<TIMER_HZ> for Timer<TIMER_HZ> {
         } else {
             -((duration - done_elapsed) as i64)
         } / 1000;
-        debug!(
-            "waited {}µs, intended duration {}µs ({:+}µs)",
+        trace!(
+            "waited {}µs ({}ns), intended duration {}µs ({:+}µs)",
             done_elapsed / 1000,
+            done_elapsed,
             duration / 1000,
             diff,
         );
