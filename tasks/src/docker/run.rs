@@ -44,12 +44,17 @@ pub fn run_image_for_targets(
         .args(docker_context_arg.into_iter())
         .arg("run")
         .args([
+            // Privileged is necessary so that the host's devices are accessible
             "--privileged",
+            // Use host networking, so that the private docker repository is accessible
             "--network=host",
+            // Required by the balena base image
             "--tty",
-            // "--interactive",
+            // Ensures that the process can receive SIGTERM signals
             "--init",
+            // Remove the container after completion
             "--rm",
+            // Always check for newer images
             "--pull=always",
             format!("{}:latest", image_name).as_str(),
         ])
