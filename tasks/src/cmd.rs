@@ -26,3 +26,16 @@ impl IntoCliArgsVec for String {
         ]
     }
 }
+
+impl IntoCliArgsVec for &str {
+    fn into_prefixed_cmd_arg(
+        &self,
+        long_option: String,
+        value_prefix: Option<String>,
+    ) -> Vec<String> {
+        vec![
+            long_option,
+            value_prefix.map_or(self.to_string(), |prefix| format!("{}{}", prefix, self)),
+        ]
+    }
+}

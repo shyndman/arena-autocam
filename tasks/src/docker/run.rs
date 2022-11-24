@@ -38,21 +38,28 @@ pub fn run_image_for_targets(
     );
     let docker_context_arg = docker_ctx.map_or(vec![], |ctx| ctx.into_cmd_arg("context"));
 
+    let rust_log_env_option = format!(
+        "RUST_LOG={}",
+        env::var("RUST_LOG")
+            .map(|s| s.to_string())
+            .unwrap_or("info".into())
+    )
+    .into_cmd_arg("env");
+
+    let rust_args_env_option = if let Ok(val) = env::var("RUST_ARGS") {
+        format!("RUST_ARGS={}", val).into_cmd_arg("env")
+    } else {
+        vec![]
+    };
+
     let mut docker_run_cmd = std::process::Command::new("docker");
     let child = docker_run_cmd
         .arg("--log-level=info")
         .args(docker_context_arg.into_iter())
         .arg("run")
+        .args(rust_args_env_option)
+        .args(rust_log_env_option)
         .args([
-            // RUST_LOG
-            "--env",
-            format!(
-                "RUST_LOG={}",
-                env::var("RUST_LOG")
-                    .map(|s| s.to_string())
-                    .unwrap_or("info".into())
-            )
-            .as_str(),
             // Privileged is necessary so that the host's devices are accessible
             "--privileged",
             // Use host networking, so that the private docker repository is accessible
