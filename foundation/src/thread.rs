@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use libc::{sched_param, PR_GET_TIMERSLACK, PR_SET_TIMERSLACK, SCHED_RR};
+use libc::{PR_GET_TIMERSLACK, PR_SET_TIMERSLACK};
 
 use crate::clock::get_time_ns;
 
@@ -37,24 +37,16 @@ pub fn sleep_nanos(duration_ns: u64) -> i64 {
     }
 }
 
-pub fn is_current_thread_realtime() -> bool {
-    unsafe { libc::sched_getscheduler(0) == SCHED_RR || libc::prctl(PR_GET_TIMERSLACK) == 1 }
+pub fn get_thread_timerslack() -> i32 {
+    unsafe { libc::prctl(PR_GET_TIMERSLACK) }
 }
 
-pub fn make_current_thread_realtime() {
-    // Sets the current thread as the maximum priority of SCHED_RR.
-    unsafe {
-        let params = sched_param {
-            sched_priority: libc::sched_get_priority_max(SCHED_RR),
-        };
-        libc::sched_setscheduler(0, SCHED_RR, &params);
-    }
-
+pub fn set_thread_timerslack(nanos: u32) {
     // Set timer slack to 1 ns (default = 50 µs). This is only relevant if we're unable
     // to set a real-time scheduling policy.
     //
     // More information on timer slack: https://lwn.net/Articles/369549/
     unsafe {
-        libc::prctl(PR_SET_TIMERSLACK, 1);
+        libc::prctl(PR_SET_TIMERSLACK, nanos as i32);
     }
 }
