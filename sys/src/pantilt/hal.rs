@@ -3,7 +3,22 @@ use embedded_hal::digital::OutputPin;
 use stepper::{drivers::a4988::A4988, traits::*};
 
 pub fn create_pan_stepper() -> Result<A4988<(), Pin, Pin, Pin, Pin, Pin, Pin, Pin>> {
-    Ok(create_pan_driver(get_stepper_pins()?))
+    let PanStepperPinMapping {
+        ms1_pin,
+        ms2_pin,
+        ms3_pin,
+        reset_pin,
+        sleep_pin,
+        step_pin,
+        direction_pin,
+    } = get_stepper_pins()?;
+
+    // TODO(shydnman): Set an initial state?
+    Ok(A4988::new()
+        .enable_step_control(step_pin)
+        .enable_direction_control(direction_pin)
+        .enable_step_mode_control((reset_pin, ms1_pin, ms2_pin, ms3_pin))
+        .enable_sleep_mode_control(sleep_pin))
 }
 
 pub fn get_stepper_pins() -> Result<PanStepperPinMapping<Pin>> {
@@ -15,29 +30,6 @@ pub fn get_stepper_pins() -> Result<PanStepperPinMapping<Pin>> {
     {
         get_fake_stepper_pins()
     }
-}
-
-fn create_pan_driver<Pin>(
-    pins: PanStepperPinMapping<Pin>,
-) -> A4988<(), Pin, Pin, Pin, Pin, Pin, Pin, Pin>
-where
-    Pin: OutputPin + Sized,
-{
-    let PanStepperPinMapping {
-        ms1_pin,
-        ms2_pin,
-        ms3_pin,
-        reset_pin,
-        sleep_pin,
-        step_pin,
-        direction_pin,
-    } = pins;
-
-    A4988::new()
-        .enable_step_control(step_pin)
-        .enable_direction_control(direction_pin)
-        .enable_step_mode_control((reset_pin, ms1_pin, ms2_pin, ms3_pin))
-        .enable_sleep_mode_control(sleep_pin)
 }
 
 #[cfg(target_arch = "aarch64")]
