@@ -14,7 +14,7 @@ use crate::{
     timer::make_software_timer,
 };
 
-pub(super) fn start_worker_thread() -> Result<(JoinHandle<()>, Sender<PanTiltCommand>)> {
+pub fn start_worker_thread() -> Result<(JoinHandle<()>, Sender<PanTiltCommand>)> {
     let (send_channel, receive_channel) = crossbeam::channel::unbounded();
     let join_handle =
         std::thread::Builder::new()

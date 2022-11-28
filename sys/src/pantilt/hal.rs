@@ -2,11 +2,11 @@ use anyhow::Result;
 use embedded_hal::digital::OutputPin;
 use stepper::{drivers::a4988::A4988, traits::*};
 
-pub(super) fn create_pan_stepper() -> Result<A4988<(), Pin, Pin, Pin, Pin, Pin, Pin, Pin>> {
-    Ok(create_pin_mapping(get_stepper_pins()?))
+pub fn create_pan_stepper() -> Result<A4988<(), Pin, Pin, Pin, Pin, Pin, Pin, Pin>> {
+    Ok(create_pan_driver(get_stepper_pins()?))
 }
 
-pub(super) fn get_stepper_pins() -> Result<PanStepperPinMapping<Pin>> {
+pub fn get_stepper_pins() -> Result<PanStepperPinMapping<Pin>> {
     #[cfg(target_arch = "aarch64")]
     {
         get_rpi_stepper_pins()
@@ -17,7 +17,7 @@ pub(super) fn get_stepper_pins() -> Result<PanStepperPinMapping<Pin>> {
     }
 }
 
-fn create_pin_mapping<Pin>(
+fn create_pan_driver<Pin>(
     pins: PanStepperPinMapping<Pin>,
 ) -> A4988<(), Pin, Pin, Pin, Pin, Pin, Pin, Pin>
 where
@@ -46,7 +46,7 @@ type Pin = crate::gpio::FakeOutputPin;
 #[cfg(target_arch = "x86_64")]
 type Pin = crate::gpio::fake::FakeOutputPin;
 
-pub(super) struct PanStepperPinMapping<Pin>
+pub struct PanStepperPinMapping<Pin>
 where
     Pin: OutputPin + Sized,
 {
@@ -80,7 +80,7 @@ where
 }
 
 #[allow(unused)]
-pub(super) fn get_rpi_stepper_pins() -> Result<PanStepperPinMapping<rppal::gpio::OutputPin>> {
+pub fn get_rpi_stepper_pins() -> Result<PanStepperPinMapping<rppal::gpio::OutputPin>> {
     use rppal::gpio::Gpio;
 
     let gpio = Gpio::new()?;
@@ -93,7 +93,7 @@ pub(super) fn get_rpi_stepper_pins() -> Result<PanStepperPinMapping<rppal::gpio:
 
 #[allow(unused)]
 
-pub(super) fn get_fake_stepper_pins(
+pub fn get_fake_stepper_pins(
 ) -> Result<PanStepperPinMapping<crate::gpio::fake::FakeOutputPin>> {
     use crate::gpio::fake::FakeOutputPin;
 

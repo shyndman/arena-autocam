@@ -16,7 +16,7 @@ pub struct Timer<const TIMER_HZ: u32> {
 
 impl<const TIMER_HZ: u32> Timer<TIMER_HZ> {
     #[allow(unused)]
-    pub(super) fn new_blocking() -> Self {
+    pub fn new_blocking() -> Self {
         Self {
             timer_start: time::Instant::now(),
             running: true,
@@ -28,7 +28,7 @@ impl<const TIMER_HZ: u32> Timer<TIMER_HZ> {
     }
 
     #[allow(unused)]
-    pub(super) fn new_non_blocking() -> Self {
+    pub fn new_non_blocking() -> Self {
         Self {
             timer_start: time::Instant::now(),
             running: true,

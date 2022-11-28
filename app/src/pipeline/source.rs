@@ -13,12 +13,12 @@ use crate::{
     pipeline::CREATE_CAT as CAT,
 };
 
-pub(super) struct SourcePads {
+pub struct SourcePads {
     pub display_stream_src_pad: gst::Pad,
     pub infer_stream_src_pad: gst::Pad,
 }
 
-pub(super) fn create_media_sources(
+pub fn create_media_sources(
     config: &Config,
     pipeline: &gst::Pipeline,
 ) -> Result<SourcePads> {

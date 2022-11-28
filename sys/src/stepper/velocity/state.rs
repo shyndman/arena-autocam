@@ -9,7 +9,7 @@ use stepper::{
     Direction, SetDirectionFuture, SetStepModeFuture, StepFuture,
 };
 
-pub(super) enum State<Driver, Timer, const TIMER_HZ: u32>
+pub enum State<Driver, Timer, const TIMER_HZ: u32>
 where
     Driver: SetStepMode,
 {
@@ -47,7 +47,7 @@ pub enum FsmStatus {
 ///
 /// This function should be called repeatedly as long as `Ok(UpdateProgress::Pending)` is
 /// being retuned.
-pub(super) fn update<Driver, Timer, TimerError, const TIMER_HZ: u32>(
+pub fn update<Driver, Timer, TimerError, const TIMER_HZ: u32>(
     mut state: State<Driver, Timer, TIMER_HZ>,
     next_velocity: &mut Option<f64>,
     next_delay: &mut Option<TimerDurationU32<TIMER_HZ>>,

@@ -1,8 +1,7 @@
 //! This crate handles the setup and control of the project's panning and tilting motors.
 
-mod hal;
+pub mod hal;
 mod worker;
-
 use std::{
     sync::atomic::{AtomicBool, Ordering},
     thread::JoinHandle,
@@ -50,6 +49,6 @@ impl PanTiltController {
 }
 
 /// The commands sent to the
-enum PanTiltCommand {
+pub enum PanTiltCommand {
     UpdateTarget { target_value: f64 },
 }
