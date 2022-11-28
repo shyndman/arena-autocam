@@ -27,6 +27,10 @@
     ],
   },
   "rust-analyzer.runnableEnv": {
-    "RUST_LOG": "debug"
+    "RUST_LOG": "debug",
+    "RUST_BACKTRACE": "full",
   },
+  "rust-analyzer.cargo.extraEnv": {
+    "RUST_BACKTRACE": "1",
+  }
 }
