@@ -7,13 +7,7 @@ pub fn setup_dev_tracing_subscriber() {
 
 pub fn setup_dev_tracing_subscriber_with_env<A: AsRef<str>>(maybe_env: Option<A>) {
     tracing_subscriber::registry()
-        .with(
-            fmt::layer()
-                .compact()
-                .with_file(false)
-                .with_target(false)
-                .without_time(),
-        )
+        .with(fmt::layer().compact().with_file(false).without_time())
         .with(if let Some(env) = maybe_env {
             EnvFilter::from_env(env)
         } else {

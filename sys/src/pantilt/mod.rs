@@ -52,3 +52,10 @@ impl PanTiltController {
 pub enum PanTiltCommand {
     UpdateTarget { target_value: f64 },
 }
+
+#[allow(unused)]
+pub mod trace {
+    use aa_foundation::trace_macros_for_target;
+    trace_macros_for_target!("pantilt");
+    pub(crate) use {debug, error, info, trace, warning};
+}

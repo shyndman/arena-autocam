@@ -13,3 +13,10 @@ pub fn make_software_timer() -> Timer<RATE_1MHZ> {
 
     Timer::new_non_blocking()
 }
+
+#[allow(unused)]
+pub mod trace {
+    use aa_foundation::trace_macros_for_target;
+    trace_macros_for_target!("timer");
+    pub(crate) use {debug, error, info, trace, warning};
+}

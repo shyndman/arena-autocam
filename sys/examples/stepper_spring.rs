@@ -1,4 +1,4 @@
-use aa_foundation::prelude::*;
+use aa_foundation::tracing::base_macros::*;
 use aa_sys::pantilt::PanTiltController;
 use anyhow::Result;
 

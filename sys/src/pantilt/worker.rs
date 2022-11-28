@@ -1,18 +1,17 @@
 use std::thread::JoinHandle;
 
-use aa_foundation::{
-    prelude::*,
-    spring::{update_spring_system, SpringConfig, SpringSystemState, SpringsUpdateResult},
-    thread::set_thread_timerslack,
+use aa_foundation::spring::{
+    update_spring_system, SpringConfig, SpringSystemState, SpringsUpdateResult,
 };
+use aa_foundation::thread::set_thread_timerslack;
 use anyhow::Result;
 use crossbeam::channel::Sender;
 
-use super::{hal::create_pan_stepper, PanTiltCommand};
-use crate::{
-    stepper::velocity::{FsmStatus, StepperVelocityController},
-    timer::make_software_timer,
-};
+use super::hal::create_pan_stepper;
+use super::trace::*;
+use super::PanTiltCommand;
+use crate::stepper::velocity::{FsmStatus, StepperVelocityController};
+use crate::timer::make_software_timer;
 
 pub fn start_worker_thread() -> Result<(JoinHandle<()>, Sender<PanTiltCommand>)> {
     let (send_channel, receive_channel) = crossbeam::channel::unbounded();

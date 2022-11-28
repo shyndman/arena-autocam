@@ -1,5 +1,6 @@
 use approx::relative_eq;
 
+use super::trace::*;
 use super::SpringConfig;
 #[allow(unused_imports)]
 use crate::prelude::*;

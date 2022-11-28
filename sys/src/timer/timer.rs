@@ -1,8 +1,11 @@
 use std::time;
 
-use aa_foundation::{clock::get_time_ns, prelude::*, thread::sleep_nanos};
+use aa_foundation::clock::get_time_ns;
+use aa_foundation::thread::sleep_nanos;
 use anyhow::anyhow;
 use fugit::RateExtU32;
+
+use super::trace::*;
 
 #[derive(Clone)]
 pub struct Timer<const TIMER_HZ: u32> {
@@ -112,7 +115,7 @@ impl<const TIMER_HZ: u32> fugit_timer::Timer<TIMER_HZ> for Timer<TIMER_HZ> {
             diff,
         );
         if diff > 50 {
-            warn!("timer off by {:+}µs", diff);
+            warning!("timer off by {:+}µs", diff);
         }
 
         Ok(())

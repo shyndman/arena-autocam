@@ -3,4 +3,4 @@ max_width = 94
 tab_spaces = 4
 binop_separator = "Back"
 group_imports = "StdExternalCrate"
-imports_granularity = "Crate"
+imports_granularity = "Module"
