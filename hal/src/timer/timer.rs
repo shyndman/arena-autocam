@@ -1,10 +1,8 @@
 use std::time;
 
-use aa_foundation::prelude::*;
+use aa_foundation::{clock::get_time_ns, prelude::*, thread::sleep_nanos};
 use anyhow::anyhow;
 use fugit::RateExtU32;
-
-use crate::{clock::get_time_ns, thread::sleep_nanos};
 
 #[derive(Clone)]
 pub struct Timer<const TIMER_HZ: u32> {
@@ -17,7 +15,8 @@ pub struct Timer<const TIMER_HZ: u32> {
 }
 
 impl<const TIMER_HZ: u32> Timer<TIMER_HZ> {
-    pub fn new_blocking() -> Self {
+    #[allow(unused)]
+    pub(super) fn new_blocking() -> Self {
         Self {
             timer_start: time::Instant::now(),
             running: true,
@@ -28,7 +27,8 @@ impl<const TIMER_HZ: u32> Timer<TIMER_HZ> {
         }
     }
 
-    pub fn new_non_blocking() -> Self {
+    #[allow(unused)]
+    pub(super) fn new_non_blocking() -> Self {
         Self {
             timer_start: time::Instant::now(),
             running: true,
@@ -117,4 +117,9 @@ impl<const TIMER_HZ: u32> fugit_timer::Timer<TIMER_HZ> for Timer<TIMER_HZ> {
 
         Ok(())
     }
+}
+
+impl<const TIMER_HZ: u32> aa_foundation::spring::SpringSystemRateProvider<TIMER_HZ>
+    for Timer<TIMER_HZ>
+{
 }

@@ -1,5 +1,4 @@
-pub mod clock;
 pub mod gpio;
-pub mod motion;
+pub mod pantilt;
 pub mod stepper;
-pub mod thread;
+pub mod timer;
