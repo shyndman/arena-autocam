@@ -1,9 +1,14 @@
 {
   "[rust]": {
-    "editor.tabSize": 4
+    "editor.tabSize": 4,
+    "editor.rulers": [
+      94
+    ]
   },
   "[toml]": {
-    "editor.rulers": [90]
+    "editor.rulers": [
+      90
+    ]
   },
   "rust-analyzer.cargo.buildScripts.enable": true,
   "rust-analyzer.procMacro.enable": true,
