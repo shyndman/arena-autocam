@@ -1,6 +1,6 @@
 pub mod clock;
-pub mod env;
 pub mod duration;
+pub mod env;
 pub mod prelude;
 pub mod spring;
 pub mod thread;

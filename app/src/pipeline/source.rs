@@ -18,10 +18,7 @@ pub struct SourcePads {
     pub infer_stream_src_pad: gst::Pad,
 }
 
-pub fn create_media_sources(
-    config: &Config,
-    pipeline: &gst::Pipeline,
-) -> Result<SourcePads> {
+pub fn create_media_sources(config: &Config, pipeline: &gst::Pipeline) -> Result<SourcePads> {
     if let Some(ref video_path) = config.source.debug_source_video_path {
         setup_debug_video_sources(PathBuf::from(video_path), config, pipeline)
     } else {
