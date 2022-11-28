@@ -1,5 +1,5 @@
 use aa_foundation::prelude::*;
-use aa_hal::pantilt::PanTiltController;
+use aa_sys::pantilt::PanTiltController;
 use anyhow::Result;
 
 fn main() {
