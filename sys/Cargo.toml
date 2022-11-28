@@ -33,7 +33,5 @@ version = "1.0.66"
 features = ["std", "backtrace"]
 
 [dependencies.stepper]
-path = "../../hal-stepper"
-# git = "https://github.com/shyndman/hal-stepper"
-# branch = "sleep-mode"
+git = "https://github.com/shyndman/hal-stepper"
 features = ["a4988"]
