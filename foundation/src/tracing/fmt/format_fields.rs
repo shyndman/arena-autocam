@@ -8,7 +8,7 @@ use tracing_subscriber::fmt::format::Writer;
 use tracing_subscriber::fmt::{FormatFields, FormattedFields};
 use tracing_subscriber::prelude::__tracing_subscriber_field_RecordFields as RecordFields;
 
-use crate::tracing::macros::TARGET_VALUE_TYPE_NAME;
+use crate::tracing::category::TARGET_VALUE_TYPE_NAME;
 
 pub struct PrettyFieldFormatter;
 

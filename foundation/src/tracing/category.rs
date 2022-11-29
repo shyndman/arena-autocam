@@ -106,7 +106,7 @@ macro_rules! trace_category {
         #[allow(unused)]
         mod tracing {
             use $crate::trace_category;
-            use $crate::tracing::macros::TargetFmt;
+            use $crate::tracing::category::TargetFmt;
             use once_cell::sync::Lazy;
 
             pub static TARGET_FMT: Lazy<TargetFmt> = Lazy::new(|| {

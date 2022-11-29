@@ -15,7 +15,7 @@ use super::context::FmtCtx;
 use super::level::FmtLevel;
 use super::target::FmtTarget;
 use super::thread::FmtThreadName;
-use crate::tracing::macros::TARGET_VALUE_TYPE_NAME;
+use crate::tracing::category::TARGET_VALUE_TYPE_NAME;
 
 #[derive(Default)]
 pub struct PrettyFormatter<T> {

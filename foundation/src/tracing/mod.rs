@@ -1,7 +1,7 @@
 extern crate tracing;
 
 pub mod fmt;
-pub mod macros;
+pub mod category;
 mod subscriber;
 
 pub use subscriber::*;
