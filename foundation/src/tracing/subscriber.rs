@@ -1,4 +1,4 @@
-use tracing_subscriber::fmt::time::{SystemTime};
+use tracing_subscriber::fmt::time::SystemTime;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
@@ -14,7 +14,7 @@ pub fn setup_dev_tracing_subscriber_with_env<A: AsRef<str>>(maybe_env: Option<A>
         .with(fmt::layer().event_format(PrettyFormatter {
             timer: SystemTime,
             display_target: true,
-            target_max_len: 10,
+            target_max_len: 14,
             ..Default::default()
         }))
         .with(if let Some(env) = maybe_env {

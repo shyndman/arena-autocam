@@ -1,5 +1,6 @@
 mod context;
 mod level;
+mod target;
 mod thread;
 
 use std::fmt;
@@ -13,6 +14,7 @@ use tracing_subscriber::registry::{self, LookupSpan};
 
 use self::context::FmtCtx;
 use self::level::FmtLevel;
+use self::target::FmtTarget;
 use self::thread::FmtThreadName;
 
 #[derive(Default)]
@@ -113,7 +115,7 @@ where
             write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
-        let fmt_ctx = { FmtCtx::new(ctx, event.parent(), writer.has_ansi_escapes()) };
+        let fmt_ctx = FmtCtx::new(ctx, event.parent(), writer.has_ansi_escapes());
         write!(writer, "{}", fmt_ctx)?;
 
         let bold = Style::new().bold();
@@ -121,17 +123,8 @@ where
 
         let mut needs_space = false;
         if self.display_target {
-            let pad_by = self.target_max_len - meta.target().len();
-            write!(
-                writer,
-                "{}{}{}",
-                dimmed.paint("["),
-                dimmed.paint(meta.target()),
-                dimmed.paint("]")
-            )?;
-            for _ in 0..pad_by {
-                writer.write_char(' ')?;
-            }
+            let fmt_target = FmtTarget::new(meta.target(), self.target_max_len);
+            write!(writer, "{}", fmt_target)?;
             needs_space = true;
         }
 

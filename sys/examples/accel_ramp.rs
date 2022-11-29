@@ -1,7 +1,10 @@
 // Required to call the `ramp` method.
 use ramp_maker::MotionProfile;
+use tracing::*;
 
 fn main() {
+    aa_foundation::tracing::setup_dev_tracing_subscriber();
+
     // Let's use floating point numbers here to keep the example simple.
     // RampMaker also supports fixed-point numbers though.
     let target_accel = 200.0; // meters per second^2
@@ -28,7 +31,7 @@ fn main() {
             accelerations[i]
         };
 
-        eprintln!(
+        info!(
             "velocity: {}, acceleration: {}\ndelay by {}",
             vel, accel, delay,
         );
