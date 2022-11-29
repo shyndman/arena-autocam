@@ -6,4 +6,4 @@ pub use system::*;
 
 use crate::trace_category;
 
-trace_category!("spring");
+trace_category!("spring", bg: crate::color::MaterialColorPalette::Red.primary());

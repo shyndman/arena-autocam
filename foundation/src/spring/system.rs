@@ -2,8 +2,6 @@ use approx::relative_eq;
 
 use super::tracing::*;
 use super::SpringConfig;
-#[allow(unused_imports)]
-use crate::prelude::*;
 
 pub trait SpringSystemRateProvider<const RATE: u32> {}
 
@@ -185,5 +183,30 @@ impl<const RATE: u32> RateScaledSystemConfig<RATE> {
             tension: tension * TENSION_SCALE_BASE / RATE as f64,
             friction: friction * FRICTION_SCALE_BASE / RATE as f64,
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::update_spring_system;
+    use crate::spring::SpringConfig;
+    use crate::tracing::setup_dev_tracing_subscriber;
+
+    #[test]
+    fn test_system() {
+        use super::super::tracing::*;
+        info!("hi hi hi");
+
+        setup_dev_tracing_subscriber();
+        let state = super::SpringSystemState::<1_000_000> {
+            from_value: 0.0,
+            target_value: 4.0,
+            value: 0.0,
+            velocity: 0.0,
+            spring_config: SpringConfig::default(),
+            is_first_tick: true,
+        };
+        update_spring_system(&state);
+
     }
 }
