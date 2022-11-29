@@ -8,7 +8,7 @@ use anyhow::Result;
 use crossbeam::channel::Sender;
 
 use super::hal::create_pan_stepper;
-use super::trace::*;
+use super::tracing::*;
 use super::PanTiltCommand;
 use crate::stepper::velocity::{FsmStatus, StepperVelocityController};
 use crate::timer::make_software_timer;

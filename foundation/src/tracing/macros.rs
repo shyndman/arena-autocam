@@ -81,11 +81,16 @@ macro_rules! trace_category {
         }
     };
     ($target:expr) => {
-        trace_category!{($) trace $target}
-        trace_category!{($) debug $target}
-        trace_category!{($) info $target}
-        trace_category!{($) warning $target}
-        trace_category!{($) error $target}
+        #[allow(unused)]
+        mod tracing {
+            use $crate::trace_category;
+            trace_category!{($) trace $target}
+            trace_category!{($) debug $target}
+            trace_category!{($) info $target}
+            trace_category!{($) warning $target}
+            trace_category!{($) error $target}
+            pub(crate) use {trace, debug, info, warning, error};
+        }
     };
 }
 
@@ -99,6 +104,8 @@ mod test {
 
     #[test]
     fn test() {
+        use self::tracing::*;
+
         set_var("RUST_LOG", "trace");
         setup_dev_tracing_subscriber();
 

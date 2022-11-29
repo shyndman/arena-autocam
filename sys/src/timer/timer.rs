@@ -5,7 +5,7 @@ use aa_foundation::thread::sleep_nanos;
 use anyhow::anyhow;
 use fugit::RateExtU32;
 
-use super::trace::*;
+use super::tracing::*;
 
 #[derive(Clone)]
 pub struct Timer<const TIMER_HZ: u32> {

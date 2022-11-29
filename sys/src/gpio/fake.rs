@@ -1,4 +1,4 @@
-use super::trace::*;
+use super::tracing::*;
 
 #[derive(Default)]
 pub struct FakeOutputPin {

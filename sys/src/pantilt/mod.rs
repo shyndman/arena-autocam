@@ -7,8 +7,11 @@ use std::thread::JoinHandle;
 
 #[allow(unused)]
 use aa_foundation::prelude::*;
+use aa_foundation::trace_category;
 use anyhow::{ensure, Result};
 use crossbeam::channel::Sender;
+
+trace_category!("pantilt");
 
 /// Used to instruct the pantilt system where it should be pointing
 pub struct PanTiltController {
@@ -49,11 +52,4 @@ impl PanTiltController {
 /// The commands sent to the
 pub enum PanTiltCommand {
     UpdateTarget { target_value: f64 },
-}
-
-#[allow(unused)]
-pub mod trace {
-    use aa_foundation::trace_category;
-    trace_category!("pantilt");
-    pub(crate) use {debug, error, info, trace, warning};
 }
