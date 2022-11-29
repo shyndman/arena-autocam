@@ -12,6 +12,5 @@ fn main() {
 fn run() -> Result<()> {
     let pantilt = PanTiltController::init_system_controller()?;
     pantilt.update_target(200.0)?;
-
     pantilt.join()
 }

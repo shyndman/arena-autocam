@@ -9,6 +9,7 @@ approx = "0.5.1"
 fugit = "0.3.6"
 indoc = "1.0.7"
 libc = "0.2.137"
+nu-ansi-term = "0.46.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.16", features = ["registry", "std", "env-filter"] }
 

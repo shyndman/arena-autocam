@@ -1,5 +1,6 @@
 extern crate tracing;
 
+pub mod fmt;
 mod macros;
 mod subscriber;
 
