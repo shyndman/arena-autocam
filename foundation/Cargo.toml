@@ -5,6 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
+anyhow = "1.0.66"
 approx = "0.5.1"
 fugit = "0.3.6"
 indoc = "1.0.7"

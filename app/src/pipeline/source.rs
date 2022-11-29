@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use aa_foundation::path::to_canonicalized_path_string;
 use anyhow::Result;
 use glib::value::FromValue;
 use glib::{EnumClass, Type};
@@ -10,7 +11,6 @@ use gst_video::VideoCapsBuilder;
 
 use crate::config::Config;
 use crate::foundation::gst::find_src_pad;
-use crate::foundation::path::to_canonicalized_path_string;
 use crate::logging::*;
 use crate::pipeline::CREATE_CAT as CAT;
 

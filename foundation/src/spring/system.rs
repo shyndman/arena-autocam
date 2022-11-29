@@ -207,6 +207,5 @@ mod test {
             is_first_tick: true,
         };
         update_spring_system(&state);
-
     }
 }

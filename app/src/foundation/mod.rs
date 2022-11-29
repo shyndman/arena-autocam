@@ -2,7 +2,6 @@
 pub mod debug;
 pub mod geom;
 pub mod gst;
-pub mod path;
 
 use ::gst::{DebugCategory, DebugColorFlags};
 use once_cell::sync::Lazy;

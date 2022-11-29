@@ -2,6 +2,7 @@ pub mod clock;
 pub mod color;
 pub mod duration;
 pub mod env;
+pub mod path;
 pub mod prelude;
 pub mod spring;
 pub mod thread;
