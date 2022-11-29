@@ -1,4 +1,5 @@
 pub mod clock;
+pub mod color;
 pub mod duration;
 pub mod env;
 pub mod prelude;
