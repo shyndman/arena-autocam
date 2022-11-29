@@ -1,5 +1,5 @@
 use aa_foundation::tracing::base_macros::*;
-use aa_sys::pantilt::PanTiltController;
+use aa_sys::pantilt::PanTiltSystem;
 use anyhow::Result;
 
 fn main() {
@@ -10,7 +10,7 @@ fn main() {
 }
 
 fn run() -> Result<()> {
-    let pantilt = PanTiltController::init_system_controller()?;
+    let pantilt = PanTiltSystem::init_system()?;
     pantilt.update_target(200.0)?;
     pantilt.join()
 }

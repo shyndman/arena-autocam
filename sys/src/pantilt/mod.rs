@@ -14,14 +14,14 @@ use crossbeam::channel::Sender;
 trace_category!("pantilt");
 
 /// Used to instruct the pantilt system where it should be pointing
-pub struct PanTiltController {
+pub struct PanTiltSystem {
     join_handle: Option<JoinHandle<()>>,
     send_channel: Sender<PanTiltCommand>,
 }
 
-impl PanTiltController {
+impl PanTiltSystem {
     /// Note, this method can only be called once.
-    pub fn init_system_controller() -> Result<Self> {
+    pub fn init_system() -> Result<Self> {
         static CREATED: AtomicBool = AtomicBool::new(false);
         ensure!(
             !CREATED.fetch_or(true, Ordering::Relaxed),
