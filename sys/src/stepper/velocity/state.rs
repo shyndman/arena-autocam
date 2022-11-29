@@ -1,13 +1,12 @@
-use std::{fmt::Debug, task::Poll};
+use std::fmt::Debug;
+use std::task::Poll;
 
 use anyhow::{anyhow, Result};
 use fugit::TimerDurationU32;
 use fugit_timer::Timer as TimerTrait;
 use num_rational::Rational32;
-use stepper::{
-    traits::{SetDirection, SetSleepMode, SetStepMode, Step},
-    Direction, SetDirectionFuture, SetStepModeFuture, StepFuture,
-};
+use stepper::traits::{SetDirection, SetSleepMode, SetStepMode, Step};
+use stepper::{Direction, SetDirectionFuture, SetStepModeFuture, StepFuture};
 
 pub enum State<Driver, Timer, const TIMER_HZ: u32>
 where

@@ -1,8 +1,10 @@
 use aa_foundation::thread::set_thread_timerslack;
-use aa_sys::{pantilt::hal::PanStepperPinMapping, timer::make_software_timer};
+use aa_sys::pantilt::hal::PanStepperPinMapping;
+use aa_sys::timer::make_software_timer;
 #[allow(unused)]
 use anyhow::{anyhow, Result};
-use stepper::{drivers::a4988::A4988, Stepper};
+use stepper::drivers::a4988::A4988;
+use stepper::Stepper;
 
 fn main() -> Result<()> {
     aa_foundation::tracing::setup_dev_tracing_subscriber();

@@ -1,10 +1,8 @@
 use anyhow::{anyhow, Error, Result};
 use glib::EnumValue;
-use gst::{
-    prelude::ElementExtManual,
-    traits::{ElementExt, GstObjectExt},
-    StateChangeSuccess,
-};
+use gst::prelude::ElementExtManual;
+use gst::traits::{ElementExt, GstObjectExt};
+use gst::StateChangeSuccess;
 
 use super::CAT;
 use crate::logging::*;

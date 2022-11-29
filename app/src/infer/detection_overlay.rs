@@ -1,8 +1,6 @@
-use std::{
-    collections::VecDeque,
-    ops::Range,
-    sync::{Arc, Mutex},
-};
+use std::collections::VecDeque;
+use std::ops::Range;
+use std::sync::{Arc, Mutex};
 
 use anyhow::Error;
 use glib::ObjectExt;
@@ -17,11 +15,9 @@ static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
     )
 });
 
-use crate::{
-    config::Config,
-    logging::*,
-    message::{AAMessage, DetectionDetails},
-};
+use crate::config::Config;
+use crate::logging::*;
+use crate::message::{AAMessage, DetectionDetails};
 
 struct State {
     info: Option<gst_video::VideoInfo>,

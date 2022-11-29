@@ -1,15 +1,14 @@
-use std::{env, fs, os::unix::prelude::PermissionsExt};
+use std::os::unix::prelude::PermissionsExt;
+use std::{env, fs};
 
 use anyhow::Result;
 use cmd_lib::run_cmd;
 use log::info;
 
-use crate::{
-    cargo::RustBuildTarget,
-    cmd::IntoCliArgsVec,
-    ctx::TaskContext,
-    docker::{build_image_for_target, qualified_image_name},
-};
+use crate::cargo::RustBuildTarget;
+use crate::cmd::IntoCliArgsVec;
+use crate::ctx::TaskContext;
+use crate::docker::{build_image_for_target, qualified_image_name};
 
 /// The Balena images we use expose system devices to the Docker container, but oddly,
 /// will change the permissions on this device. On some OSes (Ubuntu is the only known)

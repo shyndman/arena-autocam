@@ -1,22 +1,18 @@
-use std::{
-    ffi::{CStr, CString},
-    fmt::Display,
-    ptr::null_mut,
-    slice::from_raw_parts,
-};
+use std::ffi::{CStr, CString};
+use std::fmt::Display;
+use std::ptr::null_mut;
+use std::slice::from_raw_parts;
 
 use anyhow::Result;
 
-use crate::{
-    bindings::{
-        TfLiteCategory, TfLiteDetection, TfLiteDetectionResult, TfLiteDetectionResultDelete,
-        TfLiteFrameBuffer, TfLiteObjectDetector, TfLiteObjectDetectorDelete,
-        TfLiteObjectDetectorDetect, TfLiteObjectDetectorFromOptions,
-        TfLiteObjectDetectorOptions, TfLiteObjectDetectorOptionsCreate, TfLiteSupportError,
-        TfLiteSupportErrorCode, TfLiteSupportErrorDelete,
-    },
-    error::Error,
+use crate::bindings::{
+    TfLiteCategory, TfLiteDetection, TfLiteDetectionResult, TfLiteDetectionResultDelete,
+    TfLiteFrameBuffer, TfLiteObjectDetector, TfLiteObjectDetectorDelete,
+    TfLiteObjectDetectorDetect, TfLiteObjectDetectorFromOptions, TfLiteObjectDetectorOptions,
+    TfLiteObjectDetectorOptionsCreate, TfLiteSupportError, TfLiteSupportErrorCode,
+    TfLiteSupportErrorDelete,
 };
+use crate::error::Error;
 
 #[derive(Debug, Default)]
 pub struct BaseOptions {

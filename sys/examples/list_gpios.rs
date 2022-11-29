@@ -1,7 +1,8 @@
 use std::error::Error;
 
 use anyhow::Result;
-use rppal::{gpio::Gpio, system::DeviceInfo};
+use rppal::gpio::Gpio;
+use rppal::system::DeviceInfo;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let device_info = DeviceInfo::new()?;

@@ -2,17 +2,12 @@ use anyhow::Result;
 use gst::prelude::*;
 use gst_app::prelude::BaseSinkExt;
 
-use super::{
-    names,
-    source::{create_media_sources, SourcePads},
-    CREATE_CAT as CAT,
-};
-use crate::{
-    config::Config,
-    foundation::gst::find_sink_pad,
-    infer::{build_detection_overlay, DetectionSink},
-    logging::*,
-};
+use super::source::{create_media_sources, SourcePads};
+use super::{names, CREATE_CAT as CAT};
+use crate::config::Config;
+use crate::foundation::gst::find_sink_pad;
+use crate::infer::{build_detection_overlay, DetectionSink};
+use crate::logging::*;
 
 pub fn create_pipeline(config: &Config) -> Result<(glib::MainLoop, gst::Pipeline)> {
     gst::init()?;

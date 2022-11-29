@@ -1,4 +1,5 @@
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::{fmt, EnvFilter};
 
 /// Initializes a tracing subscriber suitable for tests or examples
 pub fn setup_dev_tracing_subscriber() {

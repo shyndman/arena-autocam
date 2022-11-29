@@ -1,11 +1,14 @@
-use std::{fmt::Display, time::Instant};
+use std::fmt::Display;
+use std::time::Instant;
 
 use anyhow::{anyhow, Result};
 use chrono::Local;
 use gst::prelude::*;
 
 use super::{names, CONFIGURE_CAT};
-use crate::{config::Config, foundation::path::to_canonicalized_path_string, logging::*};
+use crate::config::Config;
+use crate::foundation::path::to_canonicalized_path_string;
+use crate::logging::*;
 
 pub fn configure_pipeline(
     config: &Config,

@@ -2,7 +2,8 @@ use glib::prelude::*;
 use gst::traits::*;
 
 use super::CAT;
-use crate::{foundation::gst::name_of_enum_value, logging::*};
+use crate::foundation::gst::name_of_enum_value;
+use crate::logging::*;
 
 /// Traces graph state as a .dot file on a `gst::message::StateChanged` message, if it
 /// represents a pipeline change (rather than the change to an individual element).

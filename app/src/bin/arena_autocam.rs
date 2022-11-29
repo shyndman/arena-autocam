@@ -1,10 +1,8 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
-use arena_autocam::{
-    config::Config,
-    pipeline::{configure_pipeline, create_pipeline, run_main_loop},
-};
+use arena_autocam::config::Config;
+use arena_autocam::pipeline::{configure_pipeline, create_pipeline, run_main_loop};
 use clap::Parser;
 use serde_derive::Serialize;
 use textwrap::indent;

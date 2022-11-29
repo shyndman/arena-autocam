@@ -1,12 +1,10 @@
 #![feature(const_mut_refs)]
 
 extern crate bindgen;
-use std::{
-    env,
-    fmt::Debug,
-    path::{Path, PathBuf},
-    time::Instant,
-};
+use std::env;
+use std::fmt::Debug;
+use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 use anyhow::Result;
 use const_format::formatc;

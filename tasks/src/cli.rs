@@ -1,4 +1,5 @@
-use std::{process, str::FromStr};
+use std::process;
+use std::str::FromStr;
 
 use anyhow::Result;
 use clap_complete::Shell;

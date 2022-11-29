@@ -1,6 +1,7 @@
 use anyhow::Result;
 use embedded_hal::digital::OutputPin;
-use stepper::{drivers::a4988::A4988, traits::*};
+use stepper::drivers::a4988::A4988;
+use stepper::traits::*;
 
 pub fn create_pan_stepper() -> Result<A4988<(), Pin, Pin, Pin, Pin, Pin, Pin, Pin>> {
     let PanStepperPinMapping {

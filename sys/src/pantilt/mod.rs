@@ -2,10 +2,8 @@
 
 pub mod hal;
 mod worker;
-use std::{
-    sync::atomic::{AtomicBool, Ordering},
-    thread::JoinHandle,
-};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread::JoinHandle;
 
 #[allow(unused)]
 use aa_foundation::prelude::*;

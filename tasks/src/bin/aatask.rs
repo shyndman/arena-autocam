@@ -1,16 +1,15 @@
-use aa_task::{
-    cargo::{
-        workspace_path, RustBuildProfile, RustBuildTarget, RustTargetId, TargetArchitecture,
-    },
-    cli::{generate_completion_script, get_current_shell},
-    ctx::TaskContext,
-    docker::{
-        build_base_builder_images, build_base_runner_images, build_image_for_target,
-        run_image_for_targets,
-    },
+use aa_task::cargo::{
+    workspace_path, RustBuildProfile, RustBuildTarget, RustTargetId, TargetArchitecture,
+};
+use aa_task::cli::{generate_completion_script, get_current_shell};
+use aa_task::ctx::TaskContext;
+use aa_task::docker::{
+    build_base_builder_images, build_base_runner_images, build_image_for_target,
+    run_image_for_targets,
 };
 use anyhow::Result;
-use clap::{error::ErrorKind, ArgGroup, Args, CommandFactory, Parser, Subcommand};
+use clap::error::ErrorKind;
+use clap::{ArgGroup, Args, CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
 use dns_lookup::lookup_host;
 use log::*;

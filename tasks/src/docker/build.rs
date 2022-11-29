@@ -4,12 +4,10 @@ use anyhow::Result;
 use cargo_metadata::camino::Utf8PathBuf;
 use cmd_lib::run_cmd;
 
-use crate::{
-    cargo::{RustBuildProfile, RustBuildTarget, RustTargetId, TargetArchitecture},
-    cmd::*,
-    ctx::TaskContext,
-    docker::qualified_image_name,
-};
+use crate::cargo::{RustBuildProfile, RustBuildTarget, RustTargetId, TargetArchitecture};
+use crate::cmd::*;
+use crate::ctx::TaskContext;
+use crate::docker::qualified_image_name;
 
 const BUILDER_IMAGE_BASENAME: &str = "builder_base";
 const RUNNER_IMAGE_BASENAME: &str = "runner_base";

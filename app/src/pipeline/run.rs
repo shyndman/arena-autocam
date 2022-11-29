@@ -2,7 +2,8 @@ use anyhow::Result;
 use gst::prelude::*;
 
 use super::RUN_CAT as CAT;
-use crate::{foundation::debug::trace_graph_state_change, logging::*};
+use crate::foundation::debug::trace_graph_state_change;
+use crate::logging::*;
 
 pub fn run_main_loop((main_loop, pipeline): (glib::MainLoop, gst::Pipeline)) -> Result<()> {
     info!(CAT, obj: &pipeline, "Starting main loop");

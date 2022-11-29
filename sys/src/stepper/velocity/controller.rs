@@ -6,11 +6,9 @@ use fugit_timer::Timer as TimerTrait;
 use num_rational::Rational32;
 use num_traits::Inv;
 use replace_with::replace_with_and_return;
-use stepper::{
-    step_mode::StepMode,
-    traits::{SetDirection, SetSleepMode, SetStepMode, Step},
-    Direction,
-};
+use stepper::step_mode::StepMode;
+use stepper::traits::{SetDirection, SetSleepMode, SetStepMode, Step};
+use stepper::Direction;
 
 pub use super::state::FsmStatus;
 use super::state::State;

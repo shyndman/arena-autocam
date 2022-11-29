@@ -3,11 +3,9 @@ use std::path::PathBuf;
 use anyhow::*;
 use chrono::{DateTime, Duration, Local};
 use clap::Args;
-use figment::{
-    providers::{Format, Serialized, Toml},
-    value::magic::RelativePathBuf,
-    Figment,
-};
+use figment::providers::{Format, Serialized, Toml};
+use figment::value::magic::RelativePathBuf;
+use figment::Figment;
 use gst::prelude::TimeFormatConstructor;
 use once_cell::sync::Lazy;
 use serde_derive::{Deserialize, Serialize};

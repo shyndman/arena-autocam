@@ -28,23 +28,24 @@ impl DetectionSink {
 }
 
 mod imp {
-    use std::{sync::Mutex, time::Instant};
+    use std::sync::Mutex;
+    use std::time::Instant;
 
     use anyhow::Result;
     use glib::{ParamSpecBuilderExt, ToValue};
-    use gst::{glib, subclass::prelude::*, FlowError, Fraction};
+    use gst::subclass::prelude::*;
+    use gst::{glib, FlowError, Fraction};
     use gst_base::subclass::prelude::*;
-    use gst_video::{subclass::prelude::*, VideoCapsBuilder, VideoFormat, VideoInfo};
+    use gst_video::subclass::prelude::*;
+    use gst_video::{VideoCapsBuilder, VideoFormat, VideoInfo};
     use once_cell::sync::Lazy;
     use tflite_support::{BaseOptions, DetectionOptions, DetectionResult, ObjectDetector};
 
     use super::{CAT, DETECT_CAT};
-    use crate::{
-        foundation::geom::Rect,
-        infer::tf_buffer_adapter::TensorflowBufferAdapter,
-        logging::*,
-        message::{AAMessage, DetectionDetails},
-    };
+    use crate::foundation::geom::Rect;
+    use crate::infer::tf_buffer_adapter::TensorflowBufferAdapter;
+    use crate::logging::*;
+    use crate::message::{AAMessage, DetectionDetails};
 
     #[derive(Default)]
     struct PropsStorage {
