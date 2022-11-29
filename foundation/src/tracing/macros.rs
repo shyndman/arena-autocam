@@ -1,4 +1,4 @@
-/// Writes out preconfigured tracing macros for a named target:
+/// Writes out tracing macros for a named log category:
 ///
 /// * `trace!`
 /// * `debug!`
@@ -6,7 +6,7 @@
 /// * `warn!`
 /// * `error!`
 #[macro_export]
-macro_rules! trace_macros_for_target {
+macro_rules! trace_category {
     (($d:tt) $level:ident $target:expr) => {
         macro_rules! $level {
             ({ $d($field:tt)+ }, $d($arg:tt)+ ) => (
@@ -81,11 +81,11 @@ macro_rules! trace_macros_for_target {
         }
     };
     ($target:expr) => {
-        trace_macros_for_target!{($) trace $target}
-        trace_macros_for_target!{($) debug $target}
-        trace_macros_for_target!{($) info $target}
-        trace_macros_for_target!{($) warning $target}
-        trace_macros_for_target!{($) error $target}
+        trace_category!{($) trace $target}
+        trace_category!{($) debug $target}
+        trace_category!{($) info $target}
+        trace_category!{($) warning $target}
+        trace_category!{($) error $target}
     };
 }
 
@@ -95,7 +95,7 @@ mod test {
 
     use crate::tracing::setup_dev_tracing_subscriber;
 
-    trace_macros_for_target!("test");
+    trace_category!("test");
 
     #[test]
     fn test() {

@@ -53,7 +53,7 @@ pub enum PanTiltCommand {
 
 #[allow(unused)]
 pub mod trace {
-    use aa_foundation::trace_macros_for_target;
-    trace_macros_for_target!("pantilt");
+    use aa_foundation::trace_category;
+    trace_category!("pantilt");
     pub(crate) use {debug, error, info, trace, warning};
 }
