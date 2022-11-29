@@ -1,5 +1,6 @@
 [build]
 target = "x86_64-unknown-linux-gnu"
+rustflags = ["--cfg", "tracing_unstable"]
 
 [profile.dev.build-override]
 debug = 1
