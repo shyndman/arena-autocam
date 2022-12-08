@@ -51,6 +51,7 @@ fn thread_main(cmd_channel: crossbeam::channel::Receiver<PanTiltCommand>) -> Res
                 PanTiltCommand::UpdateTarget { target_value } => {
                     debug!(target_value, "received target from channel");
                     spring_state.update_target_value(target_value);
+                    velocity_ctrl.set_target_step(target_value);
                 }
             }
         }

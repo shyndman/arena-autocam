@@ -4,7 +4,7 @@ use anyhow::Result;
 use fugit::{MillisDurationU32, TimerDurationU32};
 use fugit_timer::Timer as TimerTrait;
 use num_rational::Rational32;
-use num_traits::Inv;
+use num_traits::{Inv, ToPrimitive};
 use replace_with::replace_with_and_return;
 use stepper::step_mode::StepMode;
 use stepper::traits::{SetDirection, SetSleepMode, SetStepMode, Step};
@@ -30,6 +30,7 @@ where
     current_direction: Direction,
     current_step: Rational32,
     current_step_mode: Driver::StepMode,
+    target_step: Option<f64>,
     state: State<Driver, Timer, TIMER_HZ>,
 }
 
@@ -48,6 +49,7 @@ where
             current_direction: Direction::Forward,
             current_step: Rational32::new_raw(1, Driver::StepMode::MAX_STEP_BASE as i32),
             current_step_mode: 1.try_into().expect("Unable to convert into StepMode"),
+            target_step: None,
             state: State::Idle {
                 driver: driver,
                 timer: timer,
@@ -63,13 +65,29 @@ where
         self.current_velocity
     }
 
+    /// Sets a step that this controller will attempt to step as close as possible to, without
+    /// changing the provided velocity.
+    ///
+    /// This allows controllers that provide velocity to this one to more easily detect their
+    /// exit conditions.
+    pub fn set_target_step(&mut self, value: f64) {
+        self.target_step = Some(value);
+    }
+
     pub fn move_once_with_velocity(&mut self, velocity: f64) {
         self.next_velocity = Some(velocity);
 
-        // Determine the delay for this velocity
+        // See whether the direction has changed for this velocity
+        let dir = direction_for_velocity(velocity);
+        if dir != self.current_direction {
+            self.next_direction = Some(dir);
+        }
+
+        // Determine the full-step delay for this velocity
         let mut delay = TimerDurationU32::<TIMER_HZ>::from_ticks(velocity.inv().abs() as u32);
 
-        let step_mode = self.microstep_for_delay(delay);
+        // See whether we can microstep to smooth things out
+        let step_mode = self.find_microstep(delay, dir);
         if step_mode != self.current_step_mode {
             self.next_step_mode = Some(step_mode);
             let base = step_mode.into() as u32;
@@ -77,12 +95,6 @@ where
         }
 
         self.next_delay = Some(delay);
-
-        // See whether the direction has changed for this velocity
-        let dir = direction_for_velocity(velocity);
-        if dir != self.current_direction {
-            self.next_direction = Some(dir);
-        }
     }
 
     pub fn update(&mut self) -> Result<FsmStatus> {
@@ -115,10 +127,25 @@ where
         )
     }
 
-    fn microstep_for_delay(&self, delay: TimerDurationU32<TIMER_HZ>) -> Driver::StepMode {
+    fn find_microstep(
+        &self,
+        delay: TimerDurationU32<TIMER_HZ>,
+        direction: Direction,
+    ) -> Driver::StepMode {
+        let dir_sign = direction as isize;
+
+        (self.current_step.to_f64().unwrap() - self.target_step.unwrap()).abs();
+
         Driver::StepMode::iter()
             .find(|step| {
                 let step_denom: u16 = (*step).into();
+                let step_delta = Rational32::new(dir_sign as i32, step_denom as i32);
+                let next_step = self.current_step + step_delta;
+
+                if let Some(target) = self.target_step {
+                    step_range_contains(&self.current_step, &next_step, target);
+                }
+
                 let delay_with_microstep = delay / (step_denom as u32);
 
                 // If we're below the threshold while at this step, then we've found what
@@ -135,4 +162,22 @@ fn direction_for_velocity(velocity: f64) -> Direction {
     } else {
         Direction::Forward
     }
+}
+
+fn step_range_contains(current: &Rational32, next: &Rational32, val: f64) -> bool {
+    let (lower, upper) = if current < next {
+        (current.to_f64().unwrap(), next.to_f64().unwrap())
+    } else {
+        (next.to_f64().unwrap(), current.to_f64().unwrap())
+    };
+    (lower..upper).contains(&val)
+}
+
+#[test]
+fn foo() {
+    let rng = 1.0..0.0;
+
+    eprintln!("{:?}", rng);
+    eprintln!("{:?}", rng.start);
+    eprintln!("{:?}", rng.end);
 }
