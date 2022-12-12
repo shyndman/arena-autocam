@@ -84,6 +84,13 @@ fn configure_detection(
             "score-threshold",
             detection_config.score_threshold,
         );
+    } else {
+        // Color detection
+        set_object_property(
+            &detection_sink,
+            "detection-pixel-threshold",
+            detection_config.color_detection_pixel_threshold,
+        );
     }
 
     set_object_property(&detection_sink, "max-results", detection_config.max_results);

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::*;
 use chrono::{DateTime, Duration, Local};
-use clap::Args;
+use clap::{Args, ArgGroup};
 use figment::providers::{Format, Serialized, Toml};
 use figment::value::magic::RelativePathBuf;
 use figment::Figment;
@@ -90,6 +90,11 @@ impl Validate for SourceConfig {
 /// In general, this configures Tensorflow Lite, but it can also be configured to use
 /// a color detection algorithm for debugging with less complexity.
 #[derive(Args, Debug, Deserialize, Serialize)]
+#[command(group(
+    ArgGroup::new("debug_color_detection_group")
+        .args(["color_detection_pixel_threshold"])
+        .requires("debug_use_color_detection")
+))]
 pub struct DetectionConfig {
     /// The path to the Tensorflow Lite model
     #[serde(serialize_with = "RelativePathBuf::serialize_relative")]
@@ -111,6 +116,11 @@ pub struct DetectionConfig {
     /// instead of the horse detection ML.
     #[arg(long, default_value_t = false)]
     pub debug_use_color_detection: bool,
+
+    /// Groups of colored pixels with more than this number will be considered a possible
+    /// detection, if `--debug-use-color-detection` is enabled.
+    #[arg(long, default_value_t = 10)]
+    pub color_detection_pixel_threshold: u32,
 }
 
 impl DetectionConfig {

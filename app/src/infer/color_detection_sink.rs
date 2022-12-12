@@ -48,6 +48,7 @@ mod imp {
     #[derive(Default)]
     struct PropsStorage {
         max_results: u32,
+        detection_pixel_threshold: u32,
         bus: Option<gst::Bus>,
     }
 
@@ -76,6 +77,10 @@ mod imp {
             &self,
             buffer: &gst::Buffer,
         ) -> Result<Vec<DetectionDetails>, gst::FlowError> {
+            let detection_pixel_threshold = {
+                let guard = self.props_storage.lock().unwrap();
+                guard.detection_pixel_threshold
+            };
             let mut info_guard = self.video_info.lock().unwrap();
             let video_info = info_guard.as_mut().ok_or_else(|| {
                 gst::element_error!(
@@ -115,7 +120,7 @@ mod imp {
             let regions = find_similar_color_regions(&image, &TARGET_COLORS).unwrap();
             Ok(regions
                 .iter()
-                .filter(|r| r.count > 10)
+                .filter(|r| r.count > detection_pixel_threshold)
                 .map(|r| {
                     let fractional_bounds = Rect::new(
                         r.x() as f64 / w as f64,
@@ -159,6 +164,11 @@ mod imp {
                         .blurb("The maximum number of detections to return per frame")
                         .default_value(3)
                         .build(),
+                    glib::ParamSpecUInt::builder("detection-pixel-threshold")
+                        .nick("Detection pixel threshold")
+                        .blurb("The minimum number of pixels in the target color that is considered a detection")
+                        .default_value(10)
+                        .build(),
                     glib::ParamSpecObject::builder::<gst::Bus>("bus")
                         .nick("Pipeline bus")
                         .blurb("The bus to which detection messages are written")
@@ -176,6 +186,10 @@ mod imp {
                     props_guard.max_results =
                         value.get::<u32>().expect("type checked upstream");
                 }
+                "detection-pixel-threshold" => {
+                    props_guard.detection_pixel_threshold =
+                        value.get::<u32>().expect("type checked upstream")
+                }
                 "bus" => props_guard.bus = value.get().expect("type checked upstream"),
                 _ => unimplemented!(),
             }
@@ -185,6 +199,9 @@ mod imp {
             let props_guard = self.props_storage.lock().unwrap();
             match pspec.name() {
                 "max-results" => props_guard.max_results.to_value(),
+                "detection-pixel-threshold" => {
+                    props_guard.detection_pixel_threshold.to_value()
+                }
                 "bus" => props_guard.bus.to_value(),
                 _ => unimplemented!(),
             }
