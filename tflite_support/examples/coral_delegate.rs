@@ -29,7 +29,10 @@ fn main() {
     };
 
     let _detector = match ObjectDetector::with_options(base_opts, detection_opts) {
-        Ok(detector) => {println!("Got a detector {:?}", detector); detector},
+        Ok(detector) => {
+            println!("Got a detector {:?}", detector);
+            detector
+        }
         Err(error) => panic!("Error: {:?}", error),
     };
 

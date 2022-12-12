@@ -134,7 +134,7 @@ where
     ) -> Driver::StepMode {
         let dir_sign = direction as isize;
 
-        (self.current_step.to_f64().unwrap() - self.target_step.unwrap()).abs();
+        // (self.current_step.to_f64().unwrap() - self.target_step.unwrap()).abs();
 
         Driver::StepMode::iter()
             .find(|step| {

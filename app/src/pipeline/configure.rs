@@ -24,7 +24,7 @@ pub fn configure_pipeline(
             e
         );
     }
-    if let Err(e) = configure_inference(config, &pipeline) {
+    if let Err(e) = configure_detection(config, &pipeline) {
         warning!(
             CONFIGURE_CAT,
             "Problem encountered while configuring inference, {}",
@@ -64,11 +64,11 @@ fn configure_video_storage(
     Ok(())
 }
 
-fn configure_inference(
+fn configure_detection(
     config: &Config,
     pipeline: &gst::Pipeline,
 ) -> Result<(), anyhow::Error> {
-    let inference_config = &config.inference;
+    let detection_config = &config.detection;
     let detection_sink = pipeline
         .by_name(names::DETECTION_SINK)
         .ok_or(anyhow!("Detection sink not found"))?;
@@ -76,13 +76,13 @@ fn configure_inference(
     set_object_property(
         &detection_sink,
         "model-location",
-        to_canonicalized_path_string(&inference_config.model_path.relative())?.as_str(),
+        to_canonicalized_path_string(&detection_config.model_path.relative())?.as_str(),
     );
-    set_object_property(&detection_sink, "max-results", inference_config.max_results);
+    set_object_property(&detection_sink, "max-results", detection_config.max_results);
     set_object_property(
         &detection_sink,
         "score-threshold",
-        inference_config.score_threshold,
+        detection_config.score_threshold,
     );
 
     Ok(())

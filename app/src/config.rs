@@ -28,7 +28,7 @@ pub struct Config {
     pub source: SourceConfig,
 
     #[command(flatten)]
-    pub inference: InferenceConfig,
+    pub detection: DetectionConfig,
 
     #[command(flatten)]
     pub video_storage: VideoStorageConfig,
@@ -36,7 +36,7 @@ pub struct Config {
 
 impl Validate for Config {
     fn validate(&self) -> Result<&Self> {
-        self.inference.validate()?;
+        self.detection.validate()?;
         self.video_storage.validate()?;
         Ok(&self)
     }
@@ -85,8 +85,12 @@ impl Validate for SourceConfig {
     }
 }
 
+/// Configures the pipeline's target detection.
+///
+/// In general, this configures Tensorflow Lite, but it can also be configured to use
+/// a color detection algorithm for debugging with less complexity.
 #[derive(Args, Debug, Deserialize, Serialize)]
-pub struct InferenceConfig {
+pub struct DetectionConfig {
     /// The path to the Tensorflow Lite model
     #[serde(serialize_with = "RelativePathBuf::serialize_relative")]
     #[arg(long, value_name = "FILE", default_value = "./")]
@@ -103,19 +107,21 @@ pub struct InferenceConfig {
     #[arg(long, default_value_t = 5.0)]
     pub rate_per_second: f32,
 
-    #[arg(long, default_value_t = true)]
-    pub tune_inference_rate: bool,
+    /// If true, the pipeline will be configured to use a green color detection algorithm
+    /// instead of the horse detection ML.
+    #[arg(long, default_value_t = false)]
+    pub debug_use_color_detection: bool,
 }
 
-impl InferenceConfig {
+impl DetectionConfig {
     pub fn inference_frame_duration(&self) -> Duration {
         Duration::milliseconds((1000.0 / self.rate_per_second) as i64)
     }
 }
 
-impl Validate for InferenceConfig {
+impl Validate for DetectionConfig {
     fn validate(&self) -> Result<&Self> {
-        if !self.model_path.relative().is_file() {
+        if !self.debug_use_color_detection && !self.model_path.relative().is_file() {
             return Err(anyhow!(r"inference.model_path: file not found"));
         }
         return Ok(self);

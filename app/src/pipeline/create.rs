@@ -178,7 +178,7 @@ fn create_display_stream_debug_branch(
     src_pad.link(&find_sink_pad(&overlay_convert1)?)?;
     gst::Element::link_many(elements)?;
 
-    let duration = config.inference.inference_frame_duration();
+    let duration = config.detection.inference_frame_duration();
     sink_display.connect("element-added", true, move |args| {
         let (sink, child) = if let [sink, child, ..] = args {
             (
@@ -212,7 +212,7 @@ fn create_infer_stream_pipeline(
             "caps",
             gst_video::VideoCapsBuilder::new()
                 .framerate(
-                    gst::Fraction::approximate_f32(config.inference.rate_per_second).unwrap(),
+                    gst::Fraction::approximate_f32(config.detection.rate_per_second).unwrap(),
                 )
                 .build(),
         )

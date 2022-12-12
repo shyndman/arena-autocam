@@ -30,7 +30,7 @@ pub fn build_detection_overlay(
     config: &Config,
 ) -> Result<gst::Element, Error> {
     let detection_lifetime_ms: f64 = config
-        .inference
+        .detection
         .inference_frame_duration()
         .num_milliseconds() as f64;
 
