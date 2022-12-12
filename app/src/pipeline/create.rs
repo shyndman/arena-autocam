@@ -1,12 +1,13 @@
 use anyhow::Result;
 use gst::prelude::*;
 use gst_app::prelude::BaseSinkExt;
+use gst_video::VideoFormat;
 
 use super::source::{create_media_sources, SourcePads};
 use super::{names, CREATE_CAT as CAT};
 use crate::config::Config;
 use crate::foundation::gst::find_sink_pad;
-use crate::infer::{build_detection_overlay, DetectionSink};
+use crate::infer::{build_detection_overlay, ColorDetectionSink, DetectionSink};
 use crate::logging::*;
 
 pub fn create_pipeline(config: &Config) -> Result<(glib::MainLoop, gst::Pipeline)> {
@@ -206,26 +207,46 @@ fn create_infer_stream_pipeline(
     infer_src_pad: &gst::Pad,
     config: &Config,
 ) -> Result<()> {
+    let mut elements = vec![];
     let infer_rate = gst::ElementFactory::make("videorate").build()?;
-    let infer_framerate_caps = gst::ElementFactory::make("capsfilter")
-        .property(
-            "caps",
-            gst_video::VideoCapsBuilder::new()
-                .framerate(
-                    gst::Fraction::approximate_f32(config.detection.rate_per_second).unwrap(),
-                )
-                .build(),
-        )
+    elements.push(&infer_rate);
+
+    let video_caps = {
+        let mut caps = gst_video::VideoCapsBuilder::new().framerate(
+            gst::Fraction::approximate_f32(config.detection.rate_per_second).unwrap(),
+        );
+        // If we're detecting color, we also add a videoconvert element to the chain so
+        // that we can be working with RGB
+        if config.detection.debug_use_color_detection {
+            caps = caps.format(VideoFormat::Rgb);
+        }
+        caps.build()
+    };
+
+    let infer_convert = gst::ElementFactory::make("videoconvert").build()?;
+    elements.push(&infer_convert);
+
+    let infer_caps = gst::ElementFactory::make("capsfilter")
+        .property("caps", video_caps)
         .build()?;
-    let infer_detection_sink = DetectionSink::new(Some(names::DETECTION_SINK))
-        .dynamic_cast::<gst::Element>()
-        .unwrap();
+    elements.push(&infer_caps);
+
+    let infer_detection_sink = if config.detection.is_ml() {
+        DetectionSink::new(Some(names::DETECTION_SINK))
+            .dynamic_cast::<gst::Element>()
+            .unwrap()
+    } else {
+        ColorDetectionSink::new(Some(names::DETECTION_SINK))
+            .dynamic_cast::<gst::Element>()
+            .unwrap()
+    };
     infer_detection_sink.set_property("bus", &bus);
-    let elements = &[&infer_rate, &infer_framerate_caps, &infer_detection_sink];
-    pipeline.add_many(elements)?;
+    elements.push(&infer_detection_sink);
+
+    pipeline.add_many(&elements)?;
 
     infer_src_pad.link(&find_sink_pad(&infer_rate)?)?;
-    gst::Element::link_many(elements)?;
+    gst::Element::link_many(&elements)?;
 
     Ok(())
 }

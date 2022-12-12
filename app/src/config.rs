@@ -117,6 +117,11 @@ impl DetectionConfig {
     pub fn inference_frame_duration(&self) -> Duration {
         Duration::milliseconds((1000.0 / self.rate_per_second) as i64)
     }
+
+    /// `true` if the application is configured to use machine learning
+    pub fn is_ml(&self) -> bool {
+        !self.debug_use_color_detection
+    }
 }
 
 impl Validate for DetectionConfig {

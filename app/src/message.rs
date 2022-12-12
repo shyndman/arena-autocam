@@ -121,7 +121,7 @@ impl AAMessage {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct DetectionDetails {
     pub pts: ClockTime,
     pub label: String,

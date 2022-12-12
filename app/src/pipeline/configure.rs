@@ -73,18 +73,20 @@ fn configure_detection(
         .by_name(names::DETECTION_SINK)
         .ok_or(anyhow!("Detection sink not found"))?;
 
-    set_object_property(
-        &detection_sink,
-        "model-location",
-        to_canonicalized_path_string(&detection_config.model_path.relative())?.as_str(),
-    );
-    set_object_property(&detection_sink, "max-results", detection_config.max_results);
-    set_object_property(
-        &detection_sink,
-        "score-threshold",
-        detection_config.score_threshold,
-    );
+    if config.detection.is_ml() {
+        set_object_property(
+            &detection_sink,
+            "model-location",
+            to_canonicalized_path_string(&detection_config.model_path.relative())?.as_str(),
+        );
+        set_object_property(
+            &detection_sink,
+            "score-threshold",
+            detection_config.score_threshold,
+        );
+    }
 
+    set_object_property(&detection_sink, "max-results", detection_config.max_results);
     Ok(())
 }
 

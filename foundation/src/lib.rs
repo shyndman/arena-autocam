@@ -1,7 +1,9 @@
 pub mod clock;
+pub mod collection;
 pub mod color;
 pub mod duration;
 pub mod env;
+pub mod image;
 pub mod path;
 pub mod prelude;
 pub mod spring;
