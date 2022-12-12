@@ -7,7 +7,7 @@ WORKDIR /root
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update; \
-    nala install \
+    apt-get install \
         g++-aarch64-linux-gnu \
         libc6-dev-arm64-cross \
         unzip

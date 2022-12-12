@@ -8,7 +8,7 @@ if [[ ! -v TARGETARCH ]]; then
   exit 1
 fi
 
-nala install \
+apt-get install \
   libcairo2-dev:$TARGETARCH \
   libgstreamer1.0-dev:$TARGETARCH \
   gstreamer1.0-plugins-base:$TARGETARCH \
@@ -33,5 +33,5 @@ chmod +x bazelisk-linux-amd64
 mv ./bazelisk-linux-amd64 /usr/bin/bazel
 
 # Python deps
-nala install python3-pip
+apt-get install python3-pip
 pip3 install numpy

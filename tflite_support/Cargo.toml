@@ -10,7 +10,13 @@ publish = false
 name = "tflite_support"
 path = "src/lib.rs"
 
+[[example]]
+name = "coral_delegate"
+path = "examples/coral_delegate.rs"
+required-features = ["coral_tpu"]
+
 [features]
+default = ["coral_tpu", "xnnpack"]
 xnnpack = []
 xnnpack_qu8 = ["xnnpack"]
 xnnpack_qs8 = ["xnnpack"]

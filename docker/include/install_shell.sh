@@ -45,7 +45,7 @@ install_dependencies() {
         return
     fi
 
-    $Sudo nala install zsh locales
+    $Sudo apt-get install zsh locales
     $Sudo locale-gen en_US.UTF-8
 }
 
