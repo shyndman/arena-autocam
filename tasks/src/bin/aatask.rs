@@ -1,3 +1,4 @@
+use aa_task::cad::{display_cad_info, pull_cad_files};
 use aa_task::cargo::{
     workspace_path, RustBuildProfile, RustBuildTarget, RustTargetId, TargetArchitecture,
 };
@@ -102,6 +103,12 @@ enum Commands {
     RunImage(RunImageOptions),
     /// Generates a completion script for this utility
     GenerateCompletionScript(GenerateCompletionScriptOptions),
+    /// Displays information about the CAD parts found in the OnShape assemblies identified
+    /// in `/cad/manifest.toml`
+    DisplayRemoteCadInfo,
+    /// Pulls the latest CAD files (STL, FeatureScript) from OnShape, and write them to the
+    /// `/cad` directory
+    PullCadFiles,
 }
 
 fn main() -> Result<()> {
@@ -116,6 +123,7 @@ fn main() -> Result<()> {
         .filter_level(log_level.to_level_filter())
         // cmd_lib prints out run_cmd! command strings at debug, so that's where we set it
         .filter_module("cmd_lib::process", LevelFilter::Debug)
+        .filter_module("reqwest", LevelFilter::Info)
         .init();
     cmd_lib::set_debug(true);
 
@@ -168,5 +176,7 @@ fn main() -> Result<()> {
 
             Ok(())
         }
+        Commands::DisplayRemoteCadInfo => display_cad_info(&task_ctx),
+        Commands::PullCadFiles => pull_cad_files(&task_ctx),
     }
 }

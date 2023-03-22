@@ -1,3 +1,6 @@
+# .env is used to store OnShape API keys. See sample.env for more information.
+.env
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
