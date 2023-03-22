@@ -1,8 +1,10 @@
 use std::path::PathBuf;
 
+use aa_foundation::tracing::setup_dev_tracing_subscriber;
 use anyhow::Result;
 use arena_autocam::config::Config;
 use arena_autocam::pipeline::{configure_pipeline, create_pipeline, run_main_loop};
+use arena_autocam::system::init_hardware_systems;
 use clap::Parser;
 use serde_derive::Serialize;
 use textwrap::indent;
@@ -19,6 +21,10 @@ pub struct Args {
 }
 
 fn main() -> Result<()> {
+    // Setup logging
+    setup_dev_tracing_subscriber();
+
+    // Load config and dump it
     eprintln!("\nStarting Arena Autocam");
 
     let args = Args::parse();
@@ -29,7 +35,10 @@ fn main() -> Result<()> {
     eprintln!();
 
     match create_pipeline(&config)
-        .and_then(|res| configure_pipeline(&config, res))
+        .and_then(|res| {
+            let hardware = init_hardware_systems()?;
+            configure_pipeline(&config, hardware, res)
+        })
         .and_then(run_main_loop)
     {
         Ok(_r) => Ok(()),

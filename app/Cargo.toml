@@ -15,6 +15,7 @@ path = "src/lib.rs"
 [dependencies]
 # Project dependencies
 aa-foundation = { path = "../foundation" }
+aa-sys = { path = "../sys" }
 tflite-support = { path = "../tflite_support" }
 
 # 3rd party dependencies

@@ -9,11 +9,13 @@ use gst::prelude::*;
 use super::{names, CONFIGURE_CAT};
 use crate::config::Config;
 use crate::logging::*;
+use crate::system::HardwareSystems;
 
 pub fn configure_pipeline(
     config: &Config,
+    hardware: HardwareSystems,
     (main_loop, pipeline): (glib::MainLoop, gst::Pipeline),
-) -> Result<(glib::MainLoop, gst::Pipeline)> {
+) -> Result<(glib::MainLoop, gst::Pipeline, HardwareSystems)> {
     info!(CONFIGURE_CAT, "Configuring pipeline");
     let now = Instant::now();
 
@@ -24,11 +26,11 @@ pub fn configure_pipeline(
             e
         );
     }
-    if let Err(e) = configure_detection(config, &pipeline) {
+    if let Err(err) = configure_detection(config, &pipeline) {
         warning!(
             CONFIGURE_CAT,
             "Problem encountered while configuring inference, {}",
-            e
+            err
         );
     }
 
@@ -38,7 +40,7 @@ pub fn configure_pipeline(
         now.elapsed().as_nanos()
     );
 
-    Ok((main_loop, pipeline))
+    Ok((main_loop, pipeline, hardware))
 }
 
 fn configure_video_storage(

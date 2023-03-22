@@ -4,8 +4,11 @@ use gst::prelude::*;
 use super::RUN_CAT as CAT;
 use crate::foundation::debug::trace_graph_state_change;
 use crate::logging::*;
+use crate::system::HardwareSystems;
 
-pub fn run_main_loop((main_loop, pipeline): (glib::MainLoop, gst::Pipeline)) -> Result<()> {
+pub fn run_main_loop(
+    (main_loop, pipeline, _hardware): (glib::MainLoop, gst::Pipeline, HardwareSystems),
+) -> Result<()> {
     info!(CAT, obj: &pipeline, "Starting main loop");
 
     let bus = pipeline
