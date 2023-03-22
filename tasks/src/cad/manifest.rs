@@ -18,6 +18,7 @@ pub struct SyncedDocument {
 
 #[derive(Debug, Deserialize)]
 pub struct SyncedAssembly {
+    pub display_name: String,
     pub id: String,
     pub synced_parts: Vec<SyncedPartInstance>,
 }
@@ -33,5 +34,5 @@ impl SyncedAssembly {
 #[derive(Debug, Deserialize)]
 pub struct SyncedPartInstance {
     pub id: String,
-    pub name: String,
+    pub basename: String,
 }

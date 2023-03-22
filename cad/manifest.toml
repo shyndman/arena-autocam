@@ -6,11 +6,12 @@ workspace_id = "5cb1ec8616ae905770ba618f"
 
 # Pan drive
 [[assemblies]]
+display_name = "pan drive"
 id = "319b8ad55c6e8f6cfd1daa19"
 synced_parts = [
-  { name = "lower_bottom", id = "MDiIkEUJrRZPHbnEa" },
-  { name = "lower_top", id = "M8b+GG8MFp049yPbQ" },
-  { name = "mount_plate", id = "MKzWAY9BOvk6nl2/N" },
-  { name = "pan_drive_gear", id = "MB5sz3viA9Yqv381r" },
-  { name = "upper_base", id = "M4Asklq39duwC3evr" },
+  { basename = "lower_bottom", id = "MDiIkEUJrRZPHbnEa" },
+  { basename = "lower_top", id = "M8b+GG8MFp049yPbQ" },
+  { basename = "mount_plate", id = "MKzWAY9BOvk6nl2/N" },
+  { basename = "pan_drive_gear", id = "MB5sz3viA9Yqv381r" },
+  { basename = "upper_base", id = "M4Asklq39duwC3evr" },
 ]
