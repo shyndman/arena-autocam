@@ -26,6 +26,7 @@ pub fn display_cad_info(task_ctx: &TaskContext) -> Result<()> {
         let assembly = client.get_assembly(&doc_id, &workspace_id, &sync_assembly.id)?;
         for inst in assembly
             .all_part_instances()
+            .iter()
             .filter(|(inst, _part)| !inst.is_standard_content)
         {
             println!("{:#?}", inst);

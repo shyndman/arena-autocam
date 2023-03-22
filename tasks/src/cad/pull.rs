@@ -28,6 +28,7 @@ pub fn pull_cad_files(task_ctx: &TaskContext) -> Result<()> {
         let assembly = client.get_assembly(&doc_id, &workspace_id, &sync_assembly.id)?;
         for (inst, part) in assembly
             .all_part_instances()
+            .iter()
             .filter(|(inst, _)| part_instances.contains_key(&inst.id))
         {
             let sync_info = part_instances

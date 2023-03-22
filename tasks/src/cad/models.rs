@@ -1,4 +1,6 @@
-use anyhow::{anyhow, Result};
+use std::collections::HashMap;
+
+use anyhow::Result;
 use reqwest::Url;
 use serde::Deserialize;
 
@@ -39,27 +41,29 @@ pub struct AssemblyDefinition {
 }
 
 impl AssemblyDefinition {
-    pub fn get_part(&self, id: &String) -> Result<&Part> {
-        Ok(self
-            .parts
-            .iter()
-            .filter(|p| &p.part_id == id)
-            .next()
-            .ok_or(anyhow!("Not found"))?)
+    fn get_part_map(&self) -> Result<HashMap<String, &Part>> {
+        Ok(self.parts.iter().map(|p| (p.part_id.clone(), p)).collect())
     }
 
-    pub fn all_part_instances(&self) -> impl Iterator<Item = (&Instance, &Part)> {
+    pub fn all_part_instances(&self) -> Vec<(&Instance, &Part)> {
+        let part_map = self.get_part_map().expect("Failed to build part map");
         self.root_assembly
             .instances
             .iter()
-            .filter(|i| i.instance_type == InstanceType::Part)
-            .map(|i| {
-                (i, {
-                    let part_id = i.part_id.clone().expect("msg");
-                    self.get_part(&part_id)
-                        .expect(&format!("No part found ({})", part_id))
+            .chain(
+                self.sub_assemblies
+                    .iter()
+                    .flat_map(|sa| sa.instances.iter()),
+            )
+            .filter(|inst| inst.instance_type == InstanceType::Part)
+            .map(|inst| {
+                (inst, {
+                    let part_id = inst.part_id.clone().expect("msg");
+                    let part = part_map.get(&part_id).expect("Part not found");
+                    *part
                 })
             })
+            .collect()
     }
 }
 
