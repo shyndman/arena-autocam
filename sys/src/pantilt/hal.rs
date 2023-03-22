@@ -33,11 +33,11 @@ pub fn get_stepper_pins() -> Result<PanStepperPinMapping<Pin>> {
     }
 }
 
-#[cfg(target_arch = "aarch64")]
-type Pin = crate::gpio::FakeOutputPin;
-
 #[cfg(target_arch = "x86_64")]
 type Pin = crate::gpio::fake::FakeOutputPin;
+
+#[cfg(target_arch = "aarch64")]
+type Pin = rppal::gpio::OutputPin;
 
 pub struct PanStepperPinMapping<Pin>
 where

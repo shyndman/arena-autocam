@@ -11,6 +11,6 @@ fn main() {
 
 fn run() -> Result<()> {
     let pantilt = PanTiltSystem::init_system()?;
-    pantilt.update_target(200.0)?;
+    pantilt.update_target(4000.0)?;
     pantilt.join()
 }

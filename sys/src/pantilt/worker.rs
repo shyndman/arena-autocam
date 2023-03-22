@@ -36,10 +36,11 @@ fn thread_main(cmd_channel: crossbeam::channel::Receiver<PanTiltCommand>) -> Res
     let timer = make_software_timer();
     let mut spring_state = SpringSystemState::from_time_provider(&timer);
     spring_state.spring_config = SpringConfig {
-        clamp: true,
-        friction: 40.0,
-        max_velocity: Some(0.001),
-        ..SpringConfig::stiff()
+        clamp: false,
+        tension: 200.0,
+        friction: 4.0,
+        mass: 12.0,
+        ..SpringConfig::default()
     };
     let mut velocity_ctrl = StepperVelocityController::new(create_pan_stepper()?, timer);
 
