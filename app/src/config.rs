@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::*;
 use chrono::{DateTime, Duration, Local};
-use clap::{Args, ArgGroup};
+use clap::{ArgGroup, Args};
 use figment::providers::{Format, Serialized, Toml};
 use figment::value::magic::RelativePathBuf;
 use figment::Figment;

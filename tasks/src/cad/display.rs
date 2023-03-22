@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use super::manifest::{SyncedDocument, CadManifest};
+use super::manifest::{CadManifest, SyncedDocument};
 use super::{environment_client, load_config};
 use crate::ctx::TaskContext;
 

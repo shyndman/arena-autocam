@@ -22,8 +22,8 @@ fn main() -> Result<()> {
     } = aa_sys::pantilt::hal::get_rpi_stepper_pins()?;
 
     let mut timer = make_software_timer();
-    let mut stepper = Stepper::from_driver(A4988::new())
-    .enable_step_control(step_pin)
+    let _stepper = Stepper::from_driver(A4988::new())
+        .enable_step_control(step_pin)
         .enable_direction_control(
             direction_pin,
             stepper::Direction::Forward,
@@ -34,7 +34,8 @@ fn main() -> Result<()> {
             (reset_pin, ms1_pin, ms2_pin, ms3_pin),
             StepMode16::Full,
             &mut timer,
-        ).unwrap();
+        )
+        .unwrap();
 
     Ok(())
 }
