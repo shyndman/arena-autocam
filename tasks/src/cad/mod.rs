@@ -8,9 +8,9 @@ mod pull;
 use std::fs::{self, DirBuilder};
 
 use anyhow::Result;
-pub use display::display_cad_info;
+pub use display::{display_cad_info, OutputFormat};
 use dotenv::dotenv;
-pub use pull::pull_cad_files;
+pub use pull::{pull_cad_files, PullCadFilesOptions};
 
 use self::manifest::CadManifest;
 use self::onshape_client::OnShapeClient;

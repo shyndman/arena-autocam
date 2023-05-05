@@ -101,6 +101,8 @@ pub struct Instance {
     pub is_standard_content: bool,
     #[serde(rename = "suppressed")]
     pub is_suppressed: bool,
+    #[serde(rename = "elementId")]
+    pub element_id: String,
     #[serde(rename = "partId")]
     pub part_id: Option<String>,
     #[serde(rename = "fullConfiguration")]

@@ -1,13 +1,22 @@
 use anyhow::Result;
+use clap::Args;
 
 use super::{environment_client, load_config};
 use crate::cad::manifest::{CadManifest, SyncedDocument};
 use crate::ctx::TaskContext;
 
-pub fn pull_cad_files(task_ctx: &TaskContext) -> Result<()> {
+#[derive(Args)]
+
+pub struct PullCadFilesOptions {
+    /// If true, the JSON OnShape assemblies will be written to stdout
+    #[arg(long)]
+    no_clean: bool,
+}
+
+pub fn pull_cad_files(options: &PullCadFilesOptions, task_ctx: &TaskContext) -> Result<()> {
     // Load the manifest describing what to sync
     let CadManifest {
-        stl_root_path: stl_directory_path,
+        stl_root_path: stl_path,
         document: SyncedDocument {
             id: doc_id,
             workspace_id,
@@ -16,11 +25,28 @@ pub fn pull_cad_files(task_ctx: &TaskContext) -> Result<()> {
         ..
     } = load_config(task_ctx)?;
 
+    if !options.no_clean {
+        eprintln!("Cleaning {}", stl_path);
+
+        let entries = std::fs::read_dir(&stl_path).expect("Could not read STL path");
+        for res in entries {
+            let entry = match res {
+                Ok(entry) => entry,
+                Err(e) => panic!("{}", e),
+            };
+
+            let name = entry.file_name().into_string().expect("");
+            if name.ends_with(".stl") {
+                std::fs::remove_file(entry.path()).expect("Could not delete file");
+            }
+        }
+    }
+
     let client = environment_client()?;
     let element_map = client.get_document_elements(&doc_id, &workspace_id)?;
 
     for synced_assembly in assemblies {
-        println!(
+        eprintln!(
             "ASSEMBLY \"{}\" ({})",
             synced_assembly.display_name, synced_assembly.id
         );
@@ -36,9 +62,9 @@ pub fn pull_cad_files(task_ctx: &TaskContext) -> Result<()> {
             .iter()
             .filter(|(inst, _)| part_instances.contains_key(&inst.id))
         {
-            println!("  PART {}...", inst.name);
+            eprintln!("  PART {}...", inst.name);
 
-            let sync_info = part_instances
+            let synced_instance = part_instances
                 .get(&inst.id)
                 .expect("Missing synced part instance");
             let stl = client.get_part_stl(
@@ -49,13 +75,13 @@ pub fn pull_cad_files(task_ctx: &TaskContext) -> Result<()> {
                 &inst.configuration,
             )?;
 
-            let mut stl_path = stl_directory_path.clone();
-            stl_path.push(sync_info.basename.clone());
+            let mut stl_path = stl_path.clone();
+            stl_path.push(synced_instance.basename.clone());
             stl_path.set_extension("stl");
 
             std::fs::write(&stl_path, &stl)?;
 
-            println!("    written to {}", &stl_path);
+            eprintln!("    written to {}", &stl_path);
         }
     }
 

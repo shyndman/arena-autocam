@@ -7,7 +7,7 @@ use hmac::{Hmac, Mac};
 use http::header;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
-use reqwest::blocking::{ClientBuilder, RequestBuilder};
+use reqwest::blocking::{ClientBuilder, RequestBuilder, Response};
 use reqwest::redirect::Policy;
 use reqwest::{IntoUrl, Method, Url};
 use sha2::Sha256;
@@ -62,6 +62,28 @@ impl OnShapeClient {
         workspace_id: &String,
         assembly_id: &String,
     ) -> Result<AssemblyDefinition> {
+        Ok(self
+            .get_assembly_internal(doc_id, workspace_id, assembly_id)?
+            .json()?)
+    }
+
+    pub fn get_assembly_json(
+        &self,
+        doc_id: &String,
+        workspace_id: &String,
+        assembly_id: &String,
+    ) -> Result<String> {
+        Ok(self
+            .get_assembly_internal(doc_id, workspace_id, assembly_id)?
+            .text()?)
+    }
+
+    fn get_assembly_internal(
+        &self,
+        doc_id: &String,
+        workspace_id: &String,
+        assembly_id: &String,
+    ) -> Result<Response> {
         let url = format!(
             "{}/assemblies/d/{document_id}/w/{workspace_id}/e/{assembly_id}",
             BASE_URL,
@@ -70,7 +92,8 @@ impl OnShapeClient {
             assembly_id = assembly_id,
         );
 
-        Ok(self.request(Method::GET, url).send()?.json()?)
+        let res = self.request(Method::GET, url).send()?;
+        Ok(res)
     }
 
     pub fn get_part_stl(
