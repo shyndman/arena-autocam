@@ -7,7 +7,7 @@ use sysinfo::{Pid, PidExt, ProcessExt, System, SystemExt};
 
 use crate::ctx::TaskContext;
 
-/// Attempts to find the type of shell that invoked `aatask`
+/// Attempts to find the type of shell that invoked `hptask`
 pub fn get_current_shell() -> Result<Option<Shell>> {
     let mut system = System::default();
     system.refresh_processes();
@@ -38,7 +38,7 @@ pub fn generate_completion_script(
 ) -> Result<String> {
     let cmd = &mut task_ctx.command;
     let mut script = vec![];
-    clap_complete::generate(shell, cmd, "aatask", &mut script);
+    clap_complete::generate(shell, cmd, "hptask", &mut script);
 
     let script_string = match shell {
         Shell::Zsh =>
@@ -46,10 +46,10 @@ pub fn generate_completion_script(
         // in the context of a completion action
         {
             String::from_utf8(script)?.replace(
-                "_aatask \"$@\"\n",
+                "_hptask \"$@\"\n",
                 "
-if [ \"$funcstack[1]\" = \"_aatask\" ]; then
-    _aatask \"$@\"
+if [ \"$funcstack[1]\" = \"_hptask\" ]; then
+    _hptask \"$@\"
 fi"
                 .trim(),
             )

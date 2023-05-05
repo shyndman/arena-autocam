@@ -41,8 +41,12 @@ pub struct AssemblyDefinition {
 }
 
 impl AssemblyDefinition {
-    fn get_part_map(&self) -> Result<HashMap<String, &Part>> {
-        Ok(self.parts.iter().map(|p| (p.part_id.clone(), p)).collect())
+    fn get_part_map(&self) -> Result<HashMap<(String, String), &Part>> {
+        Ok(self
+            .parts
+            .iter()
+            .map(|p| ((p.element_id.clone(), p.part_id.clone()), p))
+            .collect())
     }
 
     pub fn all_part_instances(&self) -> Vec<(&Instance, &Part)> {
@@ -58,8 +62,11 @@ impl AssemblyDefinition {
             .filter(|inst| inst.instance_type == InstanceType::Part)
             .map(|inst| {
                 (inst, {
+                    let element_id = inst.element_id.clone();
                     let part_id = inst.part_id.clone().expect("msg");
-                    let part = part_map.get(&part_id).expect("Part not found");
+                    let part = part_map
+                        .get(&(element_id, part_id))
+                        .expect("Part not found");
                     *part
                 })
             })

@@ -18,7 +18,7 @@ and rider during video capture.
 
 ## Building the application
 
-The `tasks` directory contains a custom `cargo` subcommand, "`tasks`", for
+The `tasks` directory contains a custom helper binary, "`hptasks`", for
 performing various development tasks.
 
 Building one of the application's binary targets has two steps.

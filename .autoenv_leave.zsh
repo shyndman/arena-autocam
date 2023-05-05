@@ -1,2 +1,2 @@
-compdef -d aatask;
-unfunction -m '_aatask*';
+compdef -d hptask;
+unfunction -m '_hptask*';

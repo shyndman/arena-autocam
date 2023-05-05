@@ -1,4 +1,4 @@
-use aa_task::cad::{display_cad_info, pull_cad_files};
+use aa_task::cad::{display_cad_info, pull_cad_files, OutputFormat, PullCadFilesOptions};
 use aa_task::cargo::{
     workspace_path, RustBuildProfile, RustBuildTarget, RustTargetId, TargetArchitecture,
 };
@@ -87,8 +87,16 @@ impl RustBuildTargetOptions {
 struct GenerateCompletionScriptOptions {
     /// The name of the shell for which completions will be generated.
     ///
-    /// If not provided, aatask will attempt to detect the type of the invoking shell.
+    /// If not provided, hptask will attempt to detect the type of the invoking shell.
     shell: Option<Shell>,
+}
+
+#[derive(Args)]
+
+struct DisplayRemoteCadOptions {
+    /// If true, the JSON OnShape assemblies will be written to stdout
+    #[arg(long)]
+    format: OutputFormat,
 }
 
 #[derive(Subcommand)]
@@ -105,10 +113,10 @@ enum Commands {
     GenerateCompletionScript(GenerateCompletionScriptOptions),
     /// Displays information about the CAD parts found in the OnShape assemblies identified
     /// in `/cad/manifest.toml`
-    DisplayRemoteCadInfo,
+    DisplayRemoteCadInfo(DisplayRemoteCadOptions),
     /// Pulls the latest CAD files (STL, FeatureScript) from OnShape, and write them to the
     /// `/cad` directory
-    PullCadFiles,
+    PullCadFiles(PullCadFilesOptions),
 }
 
 fn main() -> Result<()> {
@@ -176,7 +184,9 @@ fn main() -> Result<()> {
 
             Ok(())
         }
-        Commands::DisplayRemoteCadInfo => display_cad_info(&task_ctx),
-        Commands::PullCadFiles => pull_cad_files(&task_ctx),
+        Commands::DisplayRemoteCadInfo(DisplayRemoteCadOptions { format }) => {
+            display_cad_info(*format, &task_ctx)
+        }
+        Commands::PullCadFiles(options) => pull_cad_files(options, &task_ctx),
     }
 }
