@@ -10,4 +10,6 @@ display_name = "unified"
 id = "f1bba6743988c9e102b2513a"
 synced_parts = [
   { basename = "tripod_connector", id = "MAdn6+vpN17/rYnks" },
+  { basename = "pan_reduction_gear", id = "MRngRc8x3laJSyWum" },
+  { basename = "pan_drive_gear", id = "MeGykTzvUwQ416Wii" },
 ]
