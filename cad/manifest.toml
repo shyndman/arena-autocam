@@ -6,9 +6,8 @@ workspace_id = "5cb1ec8616ae905770ba618f"
 
 # Small pan drive
 [[assemblies]]
-display_name = "small pan drive"
-id = "358259f70b396d03bfa3704b"
+display_name = "unified"
+id = "f1bba6743988c9e102b2513a"
 synced_parts = [
-  { basename = "tripod_connector", id = "MzMNLUXwq2k6SLqBD" },
-  { basename = "base_plate", id = "M9fzpGG4eLMVspctA" },
+  { basename = "tripod_connector", id = "MAdn6+vpN17/rYnks" },
 ]
