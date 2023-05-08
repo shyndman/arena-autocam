@@ -9,7 +9,11 @@ workspace_id = "5cb1ec8616ae905770ba618f"
 display_name = "unified"
 id = "f1bba6743988c9e102b2513a"
 synced_parts = [
+  { basename = "pan_drive_gear", id = "M8RGUGyaq6fbhJgGv" },
+  { basename = "pan_inner_bearing_anchor", id = "MJAdTuw/XP+eW74ge" },
+  { basename = "pan_plate", id = "MdMsKWhqnBpOZyUoA" },
+  { basename = "main_plate", id = "MFjqCzzLHkQaAyvE8" },
+  { basename = "pan_outer_bearing_anchor", id = "MfaG3NqNY2BnCUE3h" },
+  { basename = "pan_reduction_gear", id = "MycgrKfujTgq2uC9d" },
   { basename = "tripod_connector", id = "MAdn6+vpN17/rYnks" },
-  { basename = "pan_reduction_gear", id = "MRngRc8x3laJSyWum" },
-  { basename = "pan_drive_gear", id = "MeGykTzvUwQ416Wii" },
 ]
