@@ -1,3 +1,5 @@
+
+parasolid_root_path = "para/"
 stl_root_path = "stl/"
 
 [document]

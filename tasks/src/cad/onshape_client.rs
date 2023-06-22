@@ -5,8 +5,10 @@ use anyhow::Result;
 use base64::Engine as _;
 use hmac::{Hmac, Mac};
 use http::header;
+use lazy_static::lazy_static;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
+use regex::Regex;
 use reqwest::blocking::{ClientBuilder, RequestBuilder, Response};
 use reqwest::redirect::Policy;
 use reqwest::{IntoUrl, Method, Url};
@@ -132,6 +134,50 @@ impl OnShapeClient {
             .expect("Missing location header")
             .to_str()?;
         Ok(self.request(Method::GET, redirect_url).send()?.text()?)
+    }
+
+    pub fn get_part_parasolid(
+        &self,
+        doc_id: &String,
+        microversion_id: &String,
+        element_id: &String,
+        part_id: &String,
+        configuration: &String,
+    ) -> Result<String> {
+        use std::str::FromStr;
+        let mut url = Url::from_str(&format!(
+            "{}/parts/d/{document_id}/m/{microversion_id}/e/{element_id}/partid/{part_id}/parasolid?",
+            BASE_URL,
+            document_id = doc_id,
+            microversion_id = microversion_id,
+            element_id = element_id,
+            part_id = part_id,
+        ))?;
+        {
+            let mut query = url.query_pairs_mut();
+            query.append_pair("version", "35.1");
+            query.append_pair("includeExportIds", "true");
+            query.append_pair("binaryExport", "false");
+            query.append_pair("configuration", configuration);
+        }
+
+        let res = self.request(Method::GET, url).send()?;
+        assert!(res.status().is_redirection(), "Redirect expected");
+
+        let redirect_url = res
+            .headers()
+            .get("location")
+            .expect("Missing location header")
+            .to_str()?;
+
+        let para_text = self.request(Method::GET, redirect_url).send()?.text()?;
+
+        lazy_static! {
+            // DATE=2023-06-22T10:00:01 (UTC);
+            static ref HEADER_DATE_PATTERN: Regex = Regex::new(r"(?m)DATE=.*$\n").unwrap();
+        }
+
+        Ok(HEADER_DATE_PATTERN.replace(&para_text, "").into())
     }
 
     pub fn request<U: IntoUrl>(&self, method: Method, url: U) -> RequestBuilder {

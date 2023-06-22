@@ -43,5 +43,15 @@ pub(crate) fn load_config(task_ctx: &TaskContext) -> Result<CadManifest> {
         .recursive(true)
         .create(config.stl_root_path.clone())?;
 
+    config.parasolid_root_path = {
+        let mut p = task_ctx.workspace_root_path.clone();
+        p.push("cad");
+        p.push(config.parasolid_root_path);
+        p.into()
+    };
+    DirBuilder::new()
+        .recursive(true)
+        .create(config.parasolid_root_path.clone())?;
+
     Ok(config)
 }

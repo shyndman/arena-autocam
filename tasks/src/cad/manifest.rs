@@ -5,6 +5,7 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct CadManifest {
+    pub parasolid_root_path: Utf8PathBuf,
     pub stl_root_path: Utf8PathBuf,
     pub document: SyncedDocument,
     pub assemblies: Vec<SyncedAssembly>,
