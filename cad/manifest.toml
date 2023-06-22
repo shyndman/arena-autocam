@@ -9,11 +9,14 @@ workspace_id = "5cb1ec8616ae905770ba618f"
 display_name = "unified"
 id = "f1bba6743988c9e102b2513a"
 synced_parts = [
+  { basename = "camera_case", id = "MeEowqYxBtKWmxfBo" },
+  { basename = "hardware_frame", id = "MZY/77GhjALfbx5lj" },
   { basename = "pan_drive_gear", id = "M8RGUGyaq6fbhJgGv" },
   { basename = "pan_inner_bearing_anchor", id = "MJAdTuw/XP+eW74ge" },
   { basename = "pan_plate", id = "MdMsKWhqnBpOZyUoA" },
-  { basename = "main_plate", id = "MFjqCzzLHkQaAyvE8" },
+  { basename = "main_plate", id = "MZ6rZe9PHBMbINV1E" },
   { basename = "pan_outer_bearing_anchor", id = "MfaG3NqNY2BnCUE3h" },
   { basename = "pan_reduction_gear", id = "MycgrKfujTgq2uC9d" },
   { basename = "tripod_connector", id = "MAdn6+vpN17/rYnks" },
+  { basename = "ssd_clip", id = "MUMuSM9OdT82kSyvm" },
 ]
